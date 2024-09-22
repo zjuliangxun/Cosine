@@ -1,0 +1,507 @@
+[
+    {
+        "source": "CC_Base_Hip",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 0
+    },
+    {
+        "source": "CC_Base_BoneRoot",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 1
+    },
+    {
+        "source": "CC_Base_Pelvis",
+        "target": "Pelvis",
+        "rsl_retargeting_bone_list_id": 2
+    },
+    {
+        "source": "CC_Base_L_Thigh",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 3
+    },
+    {
+        "source": "CC_Base_L_ToeBase",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 4
+    },
+    {
+        "source": "CC_Base_L_IndexToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 5
+    },
+    {
+        "source": "CC_Base_L_CalfTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 6
+    },
+    {
+        "source": "CC_Base_R_ThighTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 7
+    },
+    {
+        "source": "CC_Base_R_Calf",
+        "target": "R_Knee",
+        "rsl_retargeting_bone_list_id": 8
+    },
+    {
+        "source": "CC_Base_R_ToeBase",
+        "target": "R_Toe",
+        "rsl_retargeting_bone_list_id": 9
+    },
+    {
+        "source": "CC_Base_L_Calf",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 10
+    },
+    {
+        "source": "CC_Base_R_PinkyToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 11
+    },
+    {
+        "source": "CC_Base_R_IndexToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 12
+    },
+    {
+        "source": "CC_Base_L_ToeBaseShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 13
+    },
+    {
+        "source": "CC_Base_L_BigToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 14
+    },
+    {
+        "source": "CC_Base_L_ThighTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 15
+    },
+    {
+        "source": "CC_Base_L_RingToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 16
+    },
+    {
+        "source": "CC_Base_L_PinkyToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 17
+    },
+    {
+        "source": "CC_Base_R_Thigh",
+        "target": "R_Hip",
+        "rsl_retargeting_bone_list_id": 18
+    },
+    {
+        "source": "CC_Base_R_BigToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 19
+    },
+    {
+        "source": "CC_Base_R_MidToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 20
+    },
+    {
+        "source": "CC_Base_L_Foot",
+        "target": "L_Ankle",
+        "rsl_retargeting_bone_list_id": 21
+    },
+    {
+        "source": "CC_Base_L_MidToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 22
+    },
+    {
+        "source": "CC_Base_L_CalfTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 23
+    },
+    {
+        "source": "CC_Base_L_ThighTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 24
+    },
+    {
+        "source": "CC_Base_R_Foot",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 25
+    },
+    {
+        "source": "CC_Base_R_ThighTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 26
+    },
+    {
+        "source": "CC_Base_L_KneeShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 27
+    },
+    {
+        "source": "CC_Base_L_Eye",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 28
+    },
+    {
+        "source": "CC_Base_R_RingToe1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 29
+    },
+    {
+        "source": "CC_Base_NeckTwist01",
+        "target": "Neck",
+        "rsl_retargeting_bone_list_id": 30
+    },
+    {
+        "source": "CC_Base_NeckTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 31
+    },
+    {
+        "source": "CC_Base_Teeth02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 32
+    },
+    {
+        "source": "CC_Base_Spine02",
+        "target": "Spine",
+        "rsl_retargeting_bone_list_id": 33
+    },
+    {
+        "source": "CC_Base_R_CalfTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 34
+    },
+    {
+        "source": "CC_Base_R_Eye",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 35
+    },
+    {
+        "source": "CC_Base_Head",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 36
+    },
+    {
+        "source": "CC_Base_R_ToeBaseShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 37
+    },
+    {
+        "source": "CC_Base_R_CalfTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 38
+    },
+    {
+        "source": "CC_Base_Tongue02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 39
+    },
+    {
+        "source": "CC_Base_FacialBone",
+        "target": "Head",
+        "rsl_retargeting_bone_list_id": 40
+    },
+    {
+        "source": "CC_Base_R_KneeShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 41
+    },
+    {
+        "source": "CC_Base_Waist",
+        "target": "Pelvis_Torso_Joint",
+        "rsl_retargeting_bone_list_id": 42
+    },
+    {
+        "source": "CC_Base_UpperJaw",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 43
+    },
+    {
+        "source": "CC_Base_Teeth01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 44
+    },
+    {
+        "source": "CC_Base_L_Upperarm",
+        "target": "L_Shoulder",
+        "rsl_retargeting_bone_list_id": 45
+    },
+    {
+        "source": "CC_Base_JawRoot",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 46
+    },
+    {
+        "source": "CC_Base_Tongue03",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 47
+    },
+    {
+        "source": "CC_Base_L_Clavicle",
+        "target": "L_Thorax",
+        "rsl_retargeting_bone_list_id": 48
+    },
+    {
+        "source": "CC_Base_L_Forearm",
+        "target": "L_Elbow",
+        "rsl_retargeting_bone_list_id": 49
+    },
+    {
+        "source": "CC_Base_Spine01",
+        "target": "Torso",
+        "rsl_retargeting_bone_list_id": 50
+    },
+    {
+        "source": "CC_Base_Tongue01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 51
+    },
+    {
+        "source": "CC_Base_L_Ring3",
+        "target": "L_Ring3",
+        "rsl_retargeting_bone_list_id": 52
+    },
+    {
+        "source": "CC_Base_L_UpperarmTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 53
+    },
+    {
+        "source": "CC_Base_L_UpperarmTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 54
+    },
+    {
+        "source": "CC_Base_L_Index2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 55
+    },
+    {
+        "source": "CC_Base_L_Index3",
+        "target": "L_Index3",
+        "rsl_retargeting_bone_list_id": 56
+    },
+    {
+        "source": "CC_Base_L_ForearmTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 57
+    },
+    {
+        "source": "CC_Base_L_Thumb1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 58
+    },
+    {
+        "source": "CC_Base_R_Clavicle",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 59
+    },
+    {
+        "source": "CC_Base_L_Pinky3",
+        "target": "L_Pinky3",
+        "rsl_retargeting_bone_list_id": 60
+    },
+    {
+        "source": "CC_Base_L_Mid1",
+        "target": "L_Middle1",
+        "rsl_retargeting_bone_list_id": 61
+    },
+    {
+        "source": "CC_Base_L_Mid3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 62
+    },
+    {
+        "source": "CC_Base_L_Ring2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 63
+    },
+    {
+        "source": "CC_Base_R_Upperarm",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 64
+    },
+    {
+        "source": "CC_Base_L_ElbowShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 65
+    },
+    {
+        "source": "CC_Base_R_UpperarmTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 66
+    },
+    {
+        "source": "CC_Base_L_Pinky1",
+        "target": "L_Pinky1",
+        "rsl_retargeting_bone_list_id": 67
+    },
+    {
+        "source": "CC_Base_L_Thumb3",
+        "target": "L_Thumb3",
+        "rsl_retargeting_bone_list_id": 68
+    },
+    {
+        "source": "CC_Base_L_ForearmTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 69
+    },
+    {
+        "source": "CC_Base_L_Ring1",
+        "target": "L_Ring1",
+        "rsl_retargeting_bone_list_id": 70
+    },
+    {
+        "source": "CC_Base_L_Index1",
+        "target": "L_Index1",
+        "rsl_retargeting_bone_list_id": 71
+    },
+    {
+        "source": "CC_Base_L_Mid2",
+        "target": "L_Middle2",
+        "rsl_retargeting_bone_list_id": 72
+    },
+    {
+        "source": "CC_Base_L_Pinky2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 73
+    },
+    {
+        "source": "CC_Base_L_Hand",
+        "target": "L_Wrist",
+        "rsl_retargeting_bone_list_id": 74
+    },
+    {
+        "source": "CC_Base_L_Thumb2",
+        "target": "L_Thumb2",
+        "rsl_retargeting_bone_list_id": 75
+    },
+    {
+        "source": "CC_Base_R_Pinky3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 76
+    },
+    {
+        "source": "CC_Base_R_RibsTwist",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 77
+    },
+    {
+        "source": "CC_Base_R_Forearm",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 78
+    },
+    {
+        "source": "CC_Base_R_Breast",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 79
+    },
+    {
+        "source": "CC_Base_R_ForearmTwist01",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 80
+    },
+    {
+        "source": "CC_Base_L_RibsTwist",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 81
+    },
+    {
+        "source": "CC_Base_R_Ring2",
+        "target": "R_Ring2",
+        "rsl_retargeting_bone_list_id": 82
+    },
+    {
+        "source": "CC_Base_R_ElbowShareBone",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 83
+    },
+    {
+        "source": "CC_Base_R_Ring3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 84
+    },
+    {
+        "source": "CC_Base_R_Thumb3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 85
+    },
+    {
+        "source": "CC_Base_R_Index2",
+        "target": "L_Index2",
+        "rsl_retargeting_bone_list_id": 86
+    },
+    {
+        "source": "CC_Base_R_Index3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 87
+    },
+    {
+        "source": "CC_Base_R_Hand",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 88
+    },
+    {
+        "source": "CC_Base_R_Mid1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 89
+    },
+    {
+        "source": "CC_Base_R_Mid2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 90
+    },
+    {
+        "source": "CC_Base_R_UpperarmTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 91
+    },
+    {
+        "source": "CC_Base_R_Ring1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 92
+    },
+    {
+        "source": "CC_Base_R_Mid3",
+        "target": "L_Middle3",
+        "rsl_retargeting_bone_list_id": 93
+    },
+    {
+        "source": "CC_Base_R_Thumb2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 94
+    },
+    {
+        "source": "CC_Base_R_Index1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 95
+    },
+    {
+        "source": "CC_Base_R_Thumb1",
+        "target": "L_Thumb1",
+        "rsl_retargeting_bone_list_id": 96
+    },
+    {
+        "source": "CC_Base_R_ForearmTwist02",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 97
+    },
+    {
+        "source": "CC_Base_R_Pinky1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 98
+    },
+    {
+        "source": "CC_Base_R_Pinky2",
+        "target": "R_Pinky2",
+        "rsl_retargeting_bone_list_id": 99
+    },
+    {
+        "source": "CC_Base_L_Breast",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 100
+    }
+]
