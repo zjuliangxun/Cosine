@@ -1,7 +1,7 @@
+import isaacgym.torch_utils as tf
 import torch
 from enum import Enum
 from typing import List, Union, Tuple
-import isaacgym.torch_utils as tf
 
 
 class SkeletonID(Enum):
@@ -12,13 +12,13 @@ class SkeletonID(Enum):
 
 
 class CNode:
-    def __init__(self, pos: Union[torch.Tensor | List[float]], normal, skeleton_id):
+    def __init__(self, pos: Union[torch.Tensor, List[float]], normal, skeleton_id):
         self._position = pos
         self._normal = normal
         self._velocity = None
         self.skeleton_id = skeleton_id
         for attr, value in self.__dict__.items():
-            if isinstance(value, List[float]):
+            if isinstance(value, List):
                 setattr(self, attr, tf.to_torch(value))
 
     @property
@@ -60,15 +60,29 @@ class CNode:
             ]
         )
 
+    def __getstate__(self):
+        return {
+            "pos": self._position,
+            "normal": self._normal,
+            "velocity": self._velocity,
+            "skeleton_id": self.skeleton_id,
+        }
+
+    def __setstate__(self, state):
+        self._position = state["pos"]
+        self._normal = state["normal"]
+        self._velocity = state["velocity"]
+        self.skeleton_id = state["skeleton_id"]
+
 
 class CEdge:
     def __init__(self, start_node, end_node, order, start_frame, end_frame):
-        self.start_node = start_node
-        self.end_node = end_node
-        self._order = order
+        self.start_node = int(start_node)
+        self.end_node = int(end_node)
+        self._order = int(order)
         self._base_order = 0
-        self.start_frame = start_frame
-        self.end_frame = end_frame
+        self.start_frame = int(start_frame)
+        self.end_frame = int(end_frame)
 
     @property
     def order(self):
@@ -77,6 +91,24 @@ class CEdge:
     def base_order_offset(self, offset):
         self._base_order += offset
         return self._base_order
+
+    def __getstate__(self):
+        return {
+            "start_node": self.start_node,
+            "end_node": self.end_node,
+            "order": self._order,
+            "base_order": self._base_order,
+            "start_frame": self.start_frame,
+            "end_frame": self.end_frame,
+        }
+
+    def __setstate__(self, state):
+        self.start_node = state["start_node"]
+        self.end_node = state["end_node"]
+        self._order = state["order"]
+        self._base_order = state["base_order"]
+        self.start_frame = state["start_frame"]
+        self.end_frame = state["end_frame"]
 
 
 class GraphBaseInterface:
@@ -92,11 +124,11 @@ class GraphBaseInterface:
 
     def add_node(self, nodes: List[CNode]):
         self.nodes += nodes
-        self.node_nums += 1
+        self.node_nums += len(nodes)
 
     def add_edge(self, edges: List[CEdge]):
         self.edges += edges
-        self.edge_nums += 1
+        self.edge_nums += len(edges)
 
     def build_adj_matrix(self):
         return NotImplementedError

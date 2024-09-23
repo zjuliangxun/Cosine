@@ -1,9 +1,9 @@
+import isaacgym.torch_utils as tf
 import torch
 import json, pickle
 from typing import List, Union, Tuple
-import isaacgym.torch_utils as tf
 
-from .contact_graph_base import *
+from contact_graph_base import *
 
 # from scipy.spatial.transform import Rotation as sRot
 
@@ -11,7 +11,6 @@ from .contact_graph_base import *
 class ContactGraph(ContactGraphInterface):
     def __init__(self, nodes, edges, use_edge_feat=False, directional=True):
         super().__init__(directional)
-        self.adj_list = []
         self._has_deformed = False  # flag to rebuild feature
         self.use_edge_feat = use_edge_feat
         self._max_edge_order = 0
@@ -27,7 +26,9 @@ class ContactGraph(ContactGraphInterface):
 
     def set_coord(self, x, y, z, yaw, pitch, roll):
         self._coordinate = (
-            tf.quat_from_euler_xyz(yaw, pitch, roll),
+            tf.quat_from_euler_xyz(
+                torch.tensor(yaw), torch.tensor(pitch), torch.tensor(roll)
+            ),
             torch.tensor([x, y, z]),
         )
 
@@ -41,12 +42,12 @@ class ContactGraph(ContactGraphInterface):
 
     def build_adj_matrix(self):
         self._order2edgemap = {}
-        self.adj_matrix = torch.zeros(self.node_nums, self.node_nums)
+        self.adj_matrix = torch.zeros(1 + self.node_nums, 1 + self.node_nums)
         for edge in self.edges:
             self.adj_matrix[edge.start_node, edge.end_node] = 1
             self.adj_matrix[edge.end_node, edge.start_node] = 1
             self._max_edge_order = max(edge.order, self._max_edge_order)
-        for i in range(self._max_edge_order):
+        for i in range(self._max_edge_order, self._max_edge_order + 1):
             self._order2edgemap[i] = []
         for i, e in enumerate(self.edges):
             self._order2edgemap[e.order].append(i)
@@ -101,29 +102,38 @@ class ContactGraph(ContactGraphInterface):
         # merge nodes and edges (increment nums; edge base offset)
         return NotImplementedError
 
-    def serialize(self):
-        # Serialize the graph into a JSON format or another suitable format
-        graph_data = {
-            "nodes": [
-                {
-                    "position": node.position.tolist(),
-                    "normal": node.normal.tolist(),
-                    "skeleton_id": node.skeleton_id.value,
-                }
-                for node in self.nodes
-            ],
-            "edges": [
-                {
-                    "start_node": edge.start_node,
-                    "end_node": edge.end_node,
-                    "order": edge.order,
-                    "start_frame": edge.start_frame,
-                    "end_frame": edge.end_frame,
-                }
-                for edge in self.edges
-            ],
+    def __getstate__(self):
+        state = {
+            "use_edge_feat": self.use_edge_feat,
+            "_max_edge_order": self._max_edge_order,
+            "_order2edgemap": self._order2edgemap,
+            "_coordinate": self._coordinate,
+            "directional": self.directional,
+            "node_nums": self.node_nums,
+            "edge_nums": self.edge_nums,
+            "_node_feat_tensor": self._node_feat_tensor,
+            "_edge_feat_tensor": self._edge_feat_tensor,
+            "adj_matrix": self.adj_matrix,
+            "directional": self.directional,
+            "nodes": self.nodes,
+            "edges": self.edges,
         }
-        return json.dumps(graph_data)
+        return state
+
+    def __setstate__(self, state):
+        self.use_edge_feat = state["use_edge_feat"]
+        self._max_edge_order = state["_max_edge_order"]
+        self._order2edgemap = state["_order2edgemap"]
+        self._coordinate = state["_coordinate"]
+        self.directional = state["directional"]
+        self.nodes = state["nodes"]
+        self.edges = state["edges"]
+        self.node_nums = state["node_nums"]
+        self.edge_nums = state["edge_nums"]
+        self._node_feat_tensor = state["_node_feat_tensor"]
+        self._edge_feat_tensor = state["_edge_feat_tensor"]
+        self.adj_matrix = state["adj_matrix"]
+        self.directional = state["directional"]
 
     @property
     def skill_type(self):
