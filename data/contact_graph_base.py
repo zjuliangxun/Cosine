@@ -142,7 +142,7 @@ class GraphBaseInterface:
         # decide whether two graphs are matched(are the same skill)
         return NotImplementedError
 
-    def get_subgraph(self, nodeid: List[int]):
+    def get_subgraph(self, nodeid: List[int]) -> "GraphBaseInterface":
         return NotImplementedError
 
     def merge(self, graph):
@@ -179,6 +179,10 @@ class ContactGraphInterface(GraphBaseInterface):
     def skill_type(self):  # 动作标签
         return NotImplementedError
 
-    def anchor_pts(self):
-        # return the points(foot here)which can be linked with other graphs
+    @property
+    def anchors(self):
+        return NotImplementedError
+
+    def build_anchor_pts(self):
+        # generate the points(foot here)which can be linked with other graphs
         return NotImplementedError

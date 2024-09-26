@@ -1,11 +1,9 @@
 import isaacgym.torch_utils as tf
 import torch
-import json, pickle
+import copy
 from typing import List, Union, Tuple
 
 from contact_graph_base import *
-
-# from scipy.spatial.transform import Rotation as sRot
 
 
 class ContactGraph(ContactGraphInterface):
@@ -19,6 +17,7 @@ class ContactGraph(ContactGraphInterface):
         self.add_node(nodes)
         self.add_edge(edges)
         self.build_adj_matrix()
+        self.build_anchor_pts()
 
     @property
     def coordinate(self):
@@ -75,12 +74,13 @@ class ContactGraph(ContactGraphInterface):
         return [self.edges[idx] for idx in self._order2edgemap[order]]
 
     def deform(self, nodeid: List[int], *, q, t, scale, scale_direc):
+        # TODO scale at one direction for some subgraph
         self._has_deformed = True
         for i in nodeid:
             self.nodes[i].tf_apply(q, t)
 
     def get_subgraph(self, nodeid: List[int]):
-        nodes = [self.nodes[i] for i in nodeid]
+        nodes = [copy.deepcopy(self.nodes[i]) for i in nodeid]
         edges = [
             CEdge(
                 e.start_node,
@@ -94,13 +94,33 @@ class ContactGraph(ContactGraphInterface):
         ]
         return ContactGraph(nodes, edges, self.use_edge_feat, self.directional)
 
-    def merge(self, graph, q, t):
+    def merge(self, graph: ContactGraphInterface, q, t):
         self._has_deformed = True
         # choose the anchor_points based on head/tail
         # calculate the possible range the input CG anchor may locate
+        # !This only merge with the head of next point
+        subgraph = graph.get_subgraph(
+            [i for i in graph._head_anchors.union(graph._head_anchors1)]
+        )
         # rotate then translate the input graph so that the anchor points are the same
+        q_inv, t_inv = tf.tf_inverse(*self.coordinate)
+        delta_tf = tf.tf_combine(q_inv, t_inv, q, t)
+        for node in subgraph.nodes:
+            node.tf_apply(*delta_tf)
         # merge nodes and edges (increment nums; edge base offset)
-        return NotImplementedError
+        for edge in subgraph.edges:
+            edge.base_order_offset(self._max_edge_order + 2)
+        self.add_edge(subgraph.edges)
+        self.add_edge(
+            [
+                CEdge(i, j + self.node_nums, self._max_edge_order + 1, -1, -1)
+                for i in self._tail_anchors
+                for j in subgraph._head_anchors
+            ]
+        )
+        self.add_node(subgraph.nodes)
+        self.build_adj_matrix()
+        self.build_anchor_pts()
 
     def __getstate__(self):
         state = {
@@ -117,6 +137,9 @@ class ContactGraph(ContactGraphInterface):
             "directional": self.directional,
             "nodes": self.nodes,
             "edges": self.edges,
+            "_tail_anchors": self._tail_anchors,
+            "_head_anchors": self._head_anchors,
+            "_head_anchors1": self._head_anchors1,
         }
         return state
 
@@ -134,17 +157,22 @@ class ContactGraph(ContactGraphInterface):
         self._edge_feat_tensor = state["_edge_feat_tensor"]
         self.adj_matrix = state["adj_matrix"]
         self.directional = state["directional"]
+        self._tail_anchors = state["_tail_anchors"]
+        self._head_anchors = state["_head_anchors"]
+        self._head_anchors1 = state["_head_anchors1"]
 
     @property
     def skill_type(self):
         return self._skill_name
 
-    def anchor_pts(self):
+    def build_anchor_pts(self):
         # the nodes of input graphs can fall in circles of head/tail anchor pts
-        tail, head = set(), set()
+        self._tail_anchors, self._head_anchors = set(), set()
+        self._head_anchors1 = set()
         self._max_radius = 2.5
         for e in self.edges:
             if e.order == 0:
-                head.add(e.start_node)
+                self._head_anchors.add(e.start_node)
+                self._head_anchors1.add(e.end_node)
             if e.order == self._max_edge_order:
-                tail.add(e.end_node)
+                self._tail_anchors.add(e.end_node)
