@@ -1,5 +1,6 @@
 import isaacgym.torch_utils as tf
 import torch
+import pickle
 from enum import Enum
 from typing import List, Union, Tuple
 
@@ -11,15 +12,48 @@ class SkeletonID(Enum):
     TORSO = 4
 
 
-class CNode:
-    def __init__(self, pos: Union[torch.Tensor, List[float]], normal, skeleton_id):
+class DeviceMixin:
+    def __init__(self, device="cpu") -> None:
+        # self._dtype = torch.get_default_dtype()
+        self._device = torch.device(device)
+
+    # @property
+    # def dtype(self):
+    #     return self._dtype
+
+    @property
+    def device(self):
+        device = self._device
+        if device.type == "cuda" and device.index is None:
+            return torch.device(f"cuda:{torch.cuda.current_device()}")
+        return device
+
+    def to(self, device=None, dtype=None):
+        self._device = device
+        self._dtype = dtype
+        for attr, value in self.__dict__.items():
+            if isinstance(value, torch.Tensor):
+                setattr(self, attr, value.to(device=device))
+            elif isinstance(value, List):
+                for v in value:
+                    if isinstance(v, DeviceMixin):
+                        v.to(device=device)
+
+
+class CNode(DeviceMixin):
+    def __init__(self, pos: List[float], normal, skeleton_id: SkeletonID, device="cpu"):
+        super().__init__(device=device)
         self._position = pos
         self._normal = normal
         self._velocity = None
-        self.skeleton_id = skeleton_id
+        self.skeleton_id = (
+            skeleton_id.value
+            if isinstance(skeleton_id, SkeletonID)
+            else int(skeleton_id)
+        )
         for attr, value in self.__dict__.items():
             if isinstance(value, List):
-                setattr(self, attr, tf.to_torch(value))
+                setattr(self, attr, tf.to_torch(value, device=device))
 
     @property
     def position(self):
@@ -28,11 +62,6 @@ class CNode:
     @property
     def normal(self):
         return self._normal
-
-    def to(self, device):
-        for attr, value in self.__dict__.items():
-            if isinstance(value, torch.Tensor):
-                setattr(self, attr, value.to(device))
 
     def tf_apply(self, q, t):
         for v in [self.position, self.normal]:
@@ -59,20 +88,6 @@ class CNode:
                 torch.tensor([self.skeleton_id.value], device=self.position.device),
             ]
         )
-
-    def __getstate__(self):
-        return {
-            "pos": self._position,
-            "normal": self._normal,
-            "velocity": self._velocity,
-            "skeleton_id": self.skeleton_id,
-        }
-
-    def __setstate__(self, state):
-        self._position = state["pos"]
-        self._normal = state["normal"]
-        self._velocity = state["velocity"]
-        self.skeleton_id = state["skeleton_id"]
 
 
 class CEdge:
@@ -111,8 +126,9 @@ class CEdge:
         self.end_frame = state["end_frame"]
 
 
-class GraphBaseInterface:
-    def __init__(self, directional: bool = True) -> None:
+class GraphBase(DeviceMixin):
+    def __init__(self, directional: bool = True, device="cpu") -> None:
+        super().__init__()
         self.nodes: List[CNode] = []
         self.edges: List[CEdge] = []
         self.node_nums = 0
@@ -142,7 +158,7 @@ class GraphBaseInterface:
         # decide whether two graphs are matched(are the same skill)
         return NotImplementedError
 
-    def get_subgraph(self, nodeid: List[int]) -> "GraphBaseInterface":
+    def get_subgraph(self, nodeid: List[int]) -> "GraphBase":
         return NotImplementedError
 
     def merge(self, graph):
@@ -160,14 +176,17 @@ class GraphBaseInterface:
         return NotImplementedError
 
 
-class ContactGraphInterface(GraphBaseInterface):
-    def __init__(self, directional) -> None:
+class ContactGraphBase(GraphBase):
+    def __init__(self, directional, device="cpu") -> None:
         super().__init__(directional)
-        self._coordinate = None
+        self._root_rotation = None
+        self._root_translation = None
+        self._main_direction = None
 
-    @property
-    def coordinate(self):
-        # coord(node)=world coords
+    def get_coord(self):
+        return self._root_rotation, self._root_translation
+
+    def set_coord(self, q, t):
         return NotImplementedError
 
     @property
@@ -186,3 +205,14 @@ class ContactGraphInterface(GraphBaseInterface):
     def build_anchor_pts(self):
         # generate the points(foot here)which can be linked with other graphs
         return NotImplementedError
+
+    def to_file(self, path):
+        assert path.endswith(".pkl"), "path should end with .pkl"
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def from_file(cls, path):
+        assert path.endswith(".pkl"), "Only support .pkl file"
+        with open(path, "rb") as f:
+            return pickle.load(f)

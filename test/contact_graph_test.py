@@ -104,6 +104,14 @@ if __name__ == "__main__":
 
 
 # if __name__ == "__main__":
+#     from data.contact_graph import ContactGraph
+#     from data.contact_graph_base import CNode, CEdge
+#     import pickle
+
 #     c = [CNode([0.0, 1, 2], [2.0, 3, 4], 7), CNode([0.0, 1, 2], [2.0, 3, 4], 7)]
 #     e = [CEdge(0.0, 1.0, 0.0, 0.0, 1.0)]
 #     cg = ContactGraph(c, e)
+#     c[0].to(device="cuda")
+#     cg.to(device="cuda")
+#     with open("contact_graph.pkl", "wb") as f:
+#         pickle.dump(cg, f)
