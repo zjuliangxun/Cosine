@@ -253,11 +253,17 @@ class Humanoid(BaseTask):
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
         num_key_bodies = len(key_bodies)
 
+        # You can infer the parameters through "compute_humanoid_observations"
         if asset_file == "mjcf/amp_humanoid.xml":
+            # the body's id managed by each dof
             self._dof_body_ids = [1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14]
+            # start index of each joint in the dof_buffer. Its lengthe=num_joints+1
             self._dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
+            # len(_dof_body_ids) * 6(rotation in tan and norm form)
             self._dof_obs_size = 72
+            # num_dofs, max of _dof_offsets
             self._num_actions = 28
+            # [root_hei, num_bodies*(pos3,rot6,v3,w3), - root_pos]
             self._num_obs = 1 + 15 * (3 + 6 + 3 + 3) - 3
 
         elif asset_file == "mjcf/amp_humanoid_sword_shield.xml":
@@ -266,7 +272,6 @@ class Humanoid(BaseTask):
             self._dof_obs_size = 78
             self._num_actions = 31
             self._num_obs = 1 + 17 * (3 + 6 + 3 + 3) - 3
-
         else:
             print("Unsupported character config file: {s}".format(asset_file))
             assert False
@@ -415,11 +420,11 @@ class Humanoid(BaseTask):
         return
 
     def _build_pd_action_offset_scale(self):
-        num_joints = len(self._dof_offsets) - 1
 
         lim_low = self.dof_limits_lower.cpu().numpy()
         lim_high = self.dof_limits_upper.cpu().numpy()
 
+        num_joints = len(self._dof_offsets) - 1
         for j in range(num_joints):
             dof_offset = self._dof_offsets[j]
             dof_size = self._dof_offsets[j + 1] - self._dof_offsets[j]
