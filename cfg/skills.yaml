@@ -65,3 +65,17 @@ Vault:
   Jump Over.fbx
   Run And Swing.fbx
   parkour-cat-vault.fbx
+
+enable_deform: false
+enable_scale: false
+
+skill_combinations:
+  - skills: [flip, vault, Run]
+    fix_order: true
+    weight: 0.5
+    diffculty: 0.5
+  - skills: [flip, vault, Run, Climb, Wall]
+    fix_order: true
+    weight: 0.5
+    diffculty: 0.5
+

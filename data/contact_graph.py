@@ -1,7 +1,8 @@
+from typing import List, Union, Tuple
+import copy
 import isaacgym.torch_utils as tf
 import torch
-import copy
-from typing import List, Union, Tuple
+from torch_geometric.data import Data
 
 from contact_graph_base import *
 
@@ -19,14 +20,15 @@ class ContactGraph(ContactGraphBase):
     ):
         super().__init__(directional, device)
         self._has_deformed = False  # flag to rebuild feature
-        self.use_edge_feat = use_edge_feat
         self._max_edge_order = 0
         self._order2edgemap = {}
         self._skill_name = int(skill_id)
+        self.use_edge_feat = use_edge_feat
+        self._edge_feat_tensor = None
         self.set_coord(0, 0, 0, 0, 0, 0)
         if main_direction is None:
             # x-axis by default, up z TODO
-            self._main_direction = torch.tensor([1, 0, 0])
+            self._main_direction = torch.tensor([1, 0, 0], device=self.device)
             # if len(self.nodes) >= 2: self._main_direction = self.nodes[-1].position - self.nodes[0].position # Assuming main direction is the vector from the first node to the last
         else:
             self._main_direction = main_direction
@@ -36,15 +38,23 @@ class ContactGraph(ContactGraphBase):
         self.build_adj_matrix()
         self.build_anchor_pts()
 
+    @property
+    def skill_type(self):
+        return self._skill_name
+
+    @property
+    def main_direction(self):
+        return tf.quat_apply(self._root_rotation, self._main_direction)
+
+    @property
+    def edge_index_tensor(self):
+        return self._edge_feat_tensor
+
     def set_coord(self, x, y, z, yaw, pitch, roll):
         self._root_rotation = tf.quat_from_euler_xyz(
             torch.tensor(yaw), torch.tensor(pitch), torch.tensor(roll)
         ).to(self.device)
         self._root_translation = torch.tensor([x, y, z], device=self.device)
-
-    @property
-    def main_direction(self):
-        return self._main_direction
 
     def build_adj_matrix(self):
         self._order2edgemap = {}
@@ -57,6 +67,11 @@ class ContactGraph(ContactGraphBase):
             self._order2edgemap[i] = []
         for i, e in enumerate(self.edges):
             self._order2edgemap[e.order].append(i)
+
+        self._edge_feat_tensor = torch.tensor(
+            [(edge.start_node, edge.end_node) for edge in self.edges],
+            device=self.device,
+        ).reshape(2, -1)
 
     def get_feat_tensor(self, device="cpu"):
         if self._has_deformed:
@@ -84,11 +99,28 @@ class ContactGraph(ContactGraphBase):
             raise ValueError
         return [self.edges[idx] for idx in self._order2edgemap[order]]
 
-    def deform(self, nodeid: List[int], *, q, t, scale, scale_direc):
-        # TODO scale at one direction for some subgraph
+    def get_main_line(self):
+        # random pickup a node from head/tail anchor
+        return torch.cat(
+            [self._head_anchors[0], self._tail_anchors[0]], dim=0, device=self.device
+        )
+
+    def deform(self):
+        # first stretch the graph randomly alone x/y/z
         self._has_deformed = True
-        for i in nodeid:
-            self.nodes[i].tf_apply(q, t)
+        scale_factors = (
+            torch.rand(3, device=self.device) * 0.4 + 0.8
+        )  # Uniformly sample scale factors between 0.8 and 1.2
+        self.transform(scale=scale_factors.to(self.device))
+        # secondly adjust some positions of cetain nodes
+        # HACK: for better curriculum, we deform the height depend on skills
+        if self.skill_type == "vault":
+            pass  # TODO
+
+    def transform(self, q=None, t=None, scale=None):
+        self._has_deformed = True
+        for i in range(self.node_nums):
+            self.nodes[i].tf_apply(q, t, scale)
 
     def get_subgraph(self, nodeid: List[int]):
         nodes = [copy.deepcopy(self.nodes[i]) for i in nodeid]
@@ -133,10 +165,6 @@ class ContactGraph(ContactGraphBase):
         self.build_adj_matrix()
         self.build_anchor_pts()
 
-    @property
-    def skill_type(self):
-        return self._skill_name
-
     def build_anchor_pts(self):
         # the nodes of input graphs can fall in circles of head/tail anchor pts
         self._tail_anchors, self._head_anchors = set(), set()
@@ -148,3 +176,10 @@ class ContactGraph(ContactGraphBase):
                 self._head_anchors1.add(e.end_node)
             if e.order == self._max_edge_order:
                 self._tail_anchors.add(e.end_node)
+        line = self.get_main_line()
+        self.len_x = 1.2 * torch.norm(line[1] - line[0]).item()
+        self.len_y = 4
+
+    def to_batch(self):
+        # transform the graph to a Batch object in pytorch geometric for batch processing
+        return Data(x=self._node_feat_tensor, edge_index=self._edge_feat_tensor)

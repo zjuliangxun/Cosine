@@ -60,19 +60,20 @@ class Terrain:
         self.env_length = cfg.terrain_length
         self.env_width = cfg.terrain_width
 
-        cfg.terrain_proportions = np.array(cfg.terrain_proportions) / np.sum(
-            cfg.terrain_proportions
-        )
-        self.proportions = [
-            np.sum(cfg.terrain_proportions[: i + 1])
-            for i in range(len(cfg.terrain_proportions))
-        ]
+
+        # cfg.terrain_proportions = np.array(cfg.terrain_proportions) / np.sum(
+        #     cfg.terrain_proportions
+        # )
+        # self.proportions = [
+        #     np.sum(cfg.terrain_proportions[: i + 1])
+        #     for i in range(len(cfg.terrain_proportions))
+        # ]
         self.cfg.num_sub_terrains = cfg.num_rows * cfg.num_cols
         self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3))
-        self.terrain_type = np.zeros((cfg.num_rows, cfg.num_cols))
+        # self.terrain_type = np.zeros((cfg.num_rows, cfg.num_cols))
         # self.env_slope_vec = np.zeros((cfg.num_rows, cfg.num_cols, 3))
-        self.goals = np.zeros((cfg.num_rows, cfg.num_cols, cfg.num_goals, 3))
-        self.num_goals = cfg.num_goals
+        # self.goals = np.zeros((cfg.num_rows, cfg.num_cols, cfg.num_goals, 3))
+        # self.num_goals = cfg.num_goals
 
         self.width_per_env_pixels = int(self.env_width / cfg.horizontal_scale)
         self.length_per_env_pixels = int(self.env_length / cfg.horizontal_scale)

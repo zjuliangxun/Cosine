@@ -12,6 +12,7 @@ from typing import Tuple
 import torch
 
 from data.contact_graph import ContactGraph
+import random, copy
 
 
 # TODO 统一skill id和pkl导入的id
@@ -243,3 +244,16 @@ class SkillLib(MotionLib):
         # don't allow negative phase
         motion_time = phase * torch.clip(motion_len, min=0)
         return motion_time
+
+    def get_cg_by_skill(self, skill_name) -> ContactGraph:
+        if skill_name in self._skill_categories:
+            motion_id = random.sample(self._skill_categories[skill_name], 1)[0]
+            return copy.deepcopy(self.state.motion_cgs[motion_id])
+        else:
+            raise ValueError("Skill name not found in the skill library")
+
+    def get_skill_id(self, skill_name):
+        if skill_name in self._skill_categories:
+            return self._skill_categories[skill_name]
+        else:
+            raise ValueError("Skill name not found in the skill library")

@@ -63,9 +63,14 @@ class CNode(DeviceMixin):
     def normal(self):
         return self._normal
 
-    def tf_apply(self, q, t):
-        for v in [self.position, self.normal]:
-            v = tf.tf_apply(q, t, v)
+    def tf_apply(self, q=None, t=None, scale=None):
+        for name in ["position", "normal"]:
+            v = getattr(self, name)
+            if scale is not None:
+                v = v * scale
+            if q is not None and t is not None:
+                v = tf.tf_apply(q, t, v)
+            setattr(self, name, v)
 
     @classmethod
     def tf_apply_onfeat(cls, q, t, feat):
@@ -83,9 +88,9 @@ class CNode(DeviceMixin):
     def node_feature(self):
         return torch.cat(
             [
-                self.position,
+                self._position,
                 self.normal,
-                torch.tensor([self.skeleton_id.value], device=self.position.device),
+                torch.tensor([self.skeleton_id.value], device=self._position.device),
             ]
         )
 
