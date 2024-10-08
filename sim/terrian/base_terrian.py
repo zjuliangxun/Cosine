@@ -1,20 +1,9 @@
-
-"""
-skills:
-    - walk
-    - run
-    - else
-
-"""
-import random
 from typing import List
 import random
 import numpy as np
+import torch
 from isaacgym import terrain_utils
 from isaacgym import torch_utils
-
-# TODO batch = Batch.from_data_list(graphs)
-from torch_geometric.data import Data, Batch
 
 from sim.terrian.terrain_leggedgym import Terrain
 from sim.terrian.geometric import draw_rectangle_
@@ -33,17 +22,15 @@ class TerrainParkour(Terrain):
             [cfg.horizontal_scale, cfg.horizontal_scale, cfg.vertical_scale]
         )
 
-        self.graph_list: List[List] = []
-        self.graph_torch_list = []
-        self._cg_nums = 0
+        self.graph_list: List[List[ContactGraph]] = []
         # _roll_distribution = torch.distributions.MultivariateNormal(
         #     torch.zeros(3), torch.diag_embed(torch.tensor([0, 0, 1]))
         # )
         self._roll_distribution = torch.distributions.Normal(0, 0.37)
         super().__init__(cfg, num_envs)
-        self.env_terrain_id = np.random.randint(
-            0, self.cfg.num_sub_terrains, (num_envs)
-        )
+
+    def get_graph_list(self):
+        return self.graph_list
 
     def ego2pixel(self, q, t, ego_position: torch.Tensor) -> np.ndarray:
         ego_position = torch_utils.tf_apply(q, t, ego_position)
@@ -208,8 +195,3 @@ class TerrainParkour(Terrain):
             )
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
         # self.env_slope_vec[i, j] = terrain.slope_vector
-
-
-
-
-        

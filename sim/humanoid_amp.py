@@ -28,14 +28,16 @@
 
 from enum import Enum
 import numpy as np
+import time
+from isaacgym.torch_utils import *
 import torch
 
-from sim.humanoid import Humanoid, dof_to_obs
-from data.motion_lib import MotionLib
-from isaacgym.torch_utils import *
 
 from utils import torch_utils
+from data.motion_lib import MotionLib
+from sim.humanoid import Humanoid, dof_to_obs
 from sim.strategy.reset import ResetStrategy
+from sim.strategy.early_term import TerminateByHeight
 
 
 class HumanoidAMPBase(Humanoid):
@@ -47,6 +49,7 @@ class HumanoidAMPBase(Humanoid):
             state_init=cfg["env"]["stateInit"],
             hybrid_init_prob=cfg["env"]["hybridInitProb"],
         )
+        self.terminate_strategy = TerminateByHeight()
 
         super().__init__(
             cfg=cfg,
@@ -142,101 +145,6 @@ class HumanoidAMPBase(Humanoid):
 
         return motion_ids, enc_motion_times, enc_amp_obs_demo_flat
 
-    def fetch_amp_obs_demo_enc_pair(self, num_samples):
-        motion_ids = self._motion_lib.sample_motions(num_samples)
-
-        # since negative times are added to these values in build_amp_obs_demo,
-        # we shift them into the range [0 + truncate_time, end of clip]
-        enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
-
-        enc_motion_times = self._motion_lib.sample_time(
-            motion_ids, truncate_time=enc_window_size
-        )
-        # make sure not to add more than motion clip length, negative amp_obs will show zero index amp_obs instead
-        enc_motion_times += torch.clip(
-            self._motion_lib._motion_lengths[motion_ids], max=enc_window_size
-        )
-
-        # sub-window-size is for the amp_obs contained within the enc-amp-obs. make sure we sample only within the valid portion of the motion
-        sub_window_size = (
-            torch.clip(
-                self._motion_lib._motion_lengths[motion_ids], max=enc_window_size
-            )
-            - self.dt * self._num_amp_obs_steps
-        )
-        motion_times = (
-            enc_motion_times
-            - torch.rand(enc_motion_times.shape, device=self.device) * sub_window_size
-        )
-
-        enc_amp_obs_demo = self.build_amp_obs_demo(
-            motion_ids, enc_motion_times, self._num_amp_obs_enc_steps
-        ).view(-1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step)
-        amp_obs_demo = self.build_amp_obs_demo(
-            motion_ids, motion_times, self._num_amp_obs_steps
-        ).view(-1, self._num_amp_obs_steps, self._num_amp_obs_per_step)
-
-        enc_amp_obs_demo_flat = enc_amp_obs_demo.to(self.device).view(
-            -1, self.get_num_enc_amp_obs()
-        )
-        amp_obs_demo_flat = amp_obs_demo.to(self.device).view(
-            -1, self.get_num_amp_obs()
-        )
-
-        return (
-            motion_ids,
-            enc_motion_times,
-            enc_amp_obs_demo_flat,
-            motion_times,
-            amp_obs_demo_flat,
-        )
-
-    def fetch_amp_obs_demo_pair(self, num_samples):
-        motion_ids = self._motion_lib.sample_motions(num_samples)
-        cat_motion_ids = torch.cat((motion_ids, motion_ids), dim=0)
-
-        # since negative times are added to these values in build_amp_obs_demo,
-        # we shift them into the range [0 + truncate_time, end of clip]
-        enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
-
-        motion_times0 = self._motion_lib.sample_time(
-            motion_ids, truncate_time=enc_window_size
-        )
-        motion_times0 += torch.clip(
-            self._motion_lib._motion_lengths[motion_ids], max=enc_window_size
-        )
-
-        motion_times1 = (
-            motion_times0
-            + torch.rand(motion_times0.shape, device=self._motion_lib._device) * 0.5
-        )
-        motion_times1 = torch.min(
-            motion_times1, self._motion_lib._motion_lengths[motion_ids]
-        )
-
-        motion_times = torch.cat((motion_times0, motion_times1), dim=0)
-
-        amp_obs_demo = self.build_amp_obs_demo(
-            cat_motion_ids, motion_times, self._num_amp_obs_enc_steps
-        ).view(-1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step)
-        amp_obs_demo0, amp_obs_demo1 = torch.split(amp_obs_demo, num_samples)
-
-        amp_obs_demo0_flat = amp_obs_demo0.to(self.device).view(
-            -1, self.get_num_enc_amp_obs()
-        )
-
-        amp_obs_demo1_flat = amp_obs_demo1.to(self.device).view(
-            -1, self.get_num_enc_amp_obs()
-        )
-
-        return (
-            motion_ids,
-            motion_times0,
-            amp_obs_demo0_flat,
-            motion_times1,
-            amp_obs_demo1_flat,
-        )
-
     def build_amp_obs_demo(self, motion_ids, motion_times0, num_steps):
         dt = self.dt
 
@@ -313,6 +221,9 @@ class HumanoidAMPBase(Humanoid):
     def _reset_envs(self, env_ids):
         self.reset_strategy.reset_env(env_ids)
 
+    def _compute_reset(self):
+        self.terminate_strategy.compute_reset()
+
     def get_task_obs_size(self):
         return 0
 
@@ -367,6 +278,80 @@ class HumanoidAMPBase(Humanoid):
                 self._dof_obs_size,
                 self._dof_offsets,
             )
+        return
+
+
+class HumanoidAMPTask(HumanoidAMPBase):
+    def __init__(
+        self, cfg, sim_params, physics_engine, device_type, device_id, headless
+    ):
+        self._enable_task_obs = cfg["env"]["enableTaskObs"]
+
+        super().__init__(
+            cfg=cfg,
+            sim_params=sim_params,
+            physics_engine=physics_engine,
+            device_type=device_type,
+            device_id=device_id,
+            headless=headless,
+        )
+        return
+
+    def get_obs_size(self):
+        obs_size = super().get_obs_size()
+        if self._enable_task_obs:
+            task_obs_size = self.get_task_obs_size()
+            obs_size += task_obs_size
+        return obs_size
+
+    def get_task_obs_size(self):
+        return 0
+
+    def pre_physics_step(self, actions):
+        super().pre_physics_step(actions)
+        self._update_task()
+        return
+
+    def render(self, sync_frame_time=False):
+        super().render(sync_frame_time)
+
+        if self.viewer:
+            self._draw_task()
+        return
+
+    def _update_task(self):
+        return
+
+    def _reset_envs(self, env_ids):
+        super()._reset_envs(env_ids)
+        self._reset_task(env_ids)
+        return
+
+    def _reset_task(self, env_ids):
+        return
+
+    def _compute_observations(self, env_ids=None):
+        humanoid_obs = self._compute_humanoid_obs(env_ids)
+
+        if self._enable_task_obs:
+            task_obs = self._compute_task_obs(env_ids)
+            obs = torch.cat([humanoid_obs, task_obs], dim=-1)
+        else:
+            obs = humanoid_obs
+
+        if env_ids is None:
+            self.obs_buf[:] = obs
+        else:
+            self.obs_buf[env_ids] = obs
+        return
+
+    def _compute_task_obs(self, env_ids=None):
+        return NotImplemented
+
+    def _compute_reward(self, actions):
+        return NotImplemented
+
+    def _draw_task(self):
         return
 
 

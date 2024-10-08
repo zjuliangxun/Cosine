@@ -112,24 +112,6 @@ class CEdge:
         self._base_order += offset
         return self._base_order
 
-    def __getstate__(self):
-        return {
-            "start_node": self.start_node,
-            "end_node": self.end_node,
-            "order": self._order,
-            "base_order": self._base_order,
-            "start_frame": self.start_frame,
-            "end_frame": self.end_frame,
-        }
-
-    def __setstate__(self, state):
-        self.start_node = state["start_node"]
-        self.end_node = state["end_node"]
-        self._order = state["order"]
-        self._base_order = state["base_order"]
-        self.start_frame = state["start_frame"]
-        self.end_frame = state["end_frame"]
-
 
 class GraphBase(DeviceMixin):
     def __init__(self, directional: bool = True, device="cpu") -> None:
