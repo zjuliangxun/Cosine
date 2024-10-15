@@ -1,25 +1,27 @@
 from typing import List
-from isaacgym import gymtorch, torch_utils, gymapi
+from isaacgym import torch_utils, gymapi
 from torch_geometric.data import Data, Batch
 import torch
 import time
+from data.skill_lib import SkillLib
 from data.contact_graph_base import CNode
 from sim.humanoid_amp import HumanoidAMPTask
 from sim.terrian.base_terrian import TerrainParkour
 
 
+# TODO 定期刷新env系统，有些变量应该需要处理归入一个函数中去
 class ParkourSingle(HumanoidAMPTask):
     def __init__(
         self, cfg, sim_params, physics_engine, device_type, device_id, headless
     ):
-        self.terrain = None
+        self.terrain: TerrainParkour = None
         self._cg_nums = 0
 
         super().__init__(
             cfg, sim_params, physics_engine, device_type, device_id, headless
         )
         # ---------------init contact graph buffers----------------
-        if isinstance(self.terrain, TerrainParkour):
+        if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
             # 每个环境属于哪个grid
             self.env_terrain_id = torch.randint(
@@ -39,6 +41,15 @@ class ParkourSingle(HumanoidAMPTask):
                 device=self.device,
                 dtype=torch.long,
             )
+            self.env_skill_id = torch.tensor(
+                [
+                    self._motion_lib.get_skill_id(cg.skill_type)
+                    for cgs in graph_list
+                    for cg in cgs
+                ],
+                device=self.device,
+                dtype=torch.long,
+            )[self.env_terrain_id]
             # 初始化每个cg在大的图里的i位置
             grid_cg_offset, x = [], 0
             self._cg_rot_inv, self._cg_trans_inv = [], []
@@ -65,7 +76,7 @@ class ParkourSingle(HumanoidAMPTask):
                     for grid_cgs in graph_list
                     for cg in grid_cgs
                 ]
-            )  # TODO 给最后一个加上idle图
+            )  # TODO 给最后一个加上idle图 cankao G262
 
             self.node_progress_buf = torch.zeros_like(self.progress_buf)
             self.cg_progress_buf = torch.zeros_like(self.progress_buf)
@@ -73,8 +84,11 @@ class ParkourSingle(HumanoidAMPTask):
             self.time_out_buf = torch.zeros_like(self.progress_buf)
             # num of frames contacting with the current goal
             self.goal_reach_time_buf = torch.zeros_like(self.progress_buf)
-            self.goal_reach_buf = torch.zeros(
+            self.goal_reached_buf = torch.zeros(
                 self.num_envs, device=self.device, dtype=torch.bool
+            )
+            self.root_trans = torch.tensor(  # TODO need 刷新当环境改变，
+                [list(cgs[0].get_coord(), dim=-1) for cgs in graph_list]
             )
             return
 
@@ -160,6 +174,18 @@ class ParkourSingle(HumanoidAMPTask):
             .to(self.device)
         )
 
+    def _load_motion(self, motion_file):
+        assert self._dof_offsets[-1] == self.num_dof
+        self._motion_lib = SkillLib(
+            motion_file=motion_file,
+            dof_body_ids=self._dof_body_ids,
+            dof_offsets=self._dof_offsets,
+            key_body_ids=self._key_body_ids.cpu().numpy(),
+            equal_motion_weights=self._equal_motion_weights,
+            device=self.device,
+        )
+        return
+
     ############### Compute obs/rewards ################
 
     def _compute_observations(self, env_ids=None):
@@ -217,9 +243,10 @@ class ParkourSingle(HumanoidAMPTask):
         self.goal_reach_time_buf.set_(False)
 
         # reward distance
+        # TODO weight
         d = torch.norm(ske_state[..., :3] - filtered_x[..., :3])
         rd = torch.exp(-d + 1e-7)
-        self.goal_reach_buf.scatter_reduce_(
+        self.goal_reached_buf.scatter_reduce_(
             0, filtered_batch_id, d > self.cfg.reward.rd_thresh, reduce="sum"
         )
 
@@ -228,7 +255,7 @@ class ParkourSingle(HumanoidAMPTask):
             0, filtered_batch_id, rd, reduce="sum"
         )
 
-        self.goal_reach_time_buf[self.goal_reach_buf] += 1
+        self.goal_reach_time_buf[self.goal_reached_buf] += 1
         self._update_reward_goals()
         return
 
@@ -266,20 +293,3 @@ class ParkourSingle(HumanoidAMPTask):
             env_cur_cg_id + 1,
         )
         return env_cur_cg_id, env_next_cg_id
-
-
-# def _compute_reward_nobatch(self, actions):
-#     for i in range(self.num_envs):
-#         cg: Data = self.extras["graph_obs"][i]
-#         if self.node_progress_buf[i] == cg.num_nodes:
-#             self.node_progress_buf[i] = 0
-#             self.cg_progress_buf[i] += 1
-#         else:
-#             nodeid = self.node_progress_buf[i]
-
-#             goals = cg.x[:, cg.x[:, -1] == nodeid]
-#             skeleid = goals[:, -2]
-#             indices = (skeleid * 15 + 1).unsqueeze(1) + torch.arange(3).unsqueeze(0)
-#             ske_pos = (ske_state := self.obs_buf[i][indices])[:3]
-
-#     return
