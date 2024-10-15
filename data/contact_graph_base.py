@@ -41,11 +41,21 @@ class DeviceMixin:
 
 
 class CNode(DeviceMixin):
-    def __init__(self, pos: List[float], normal, skeleton_id: SkeletonID, device="cpu"):
-        super().__init__(device=device)
+    def __init__(
+        self,
+        pos: List[float],
+        normal,
+        skeleton_id: SkeletonID,
+        order: int,
+        sustain_time: int = 1,
+        device="cpu",
+    ):
+
         self._position = pos
         self._normal = normal
         self._velocity = None
+        self._order = order
+        self._sustain_time = sustain_time
         self.skeleton_id = (
             skeleton_id.value
             if isinstance(skeleton_id, SkeletonID)
@@ -54,6 +64,10 @@ class CNode(DeviceMixin):
         for attr, value in self.__dict__.items():
             if isinstance(value, List):
                 setattr(self, attr, tf.to_torch(value, device=device))
+
+    @property
+    def sustain_time(self):
+        return self._sustain_time
 
     @property
     def position(self):
@@ -90,7 +104,9 @@ class CNode(DeviceMixin):
             [
                 self._position,
                 self.normal,
-                torch.tensor([self.skeleton_id.value], device=self._position.device),
+                torch.tensor(
+                    [self.skeleton_id.value, self._order], device=self._position.device
+                ),
             ]
         )
 

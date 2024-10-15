@@ -1,0 +1,2 @@
+reward:
+  rd_thresh: 0.3 # self.cfg.reward.rd_thresh TODO

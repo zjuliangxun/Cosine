@@ -39,6 +39,10 @@ class ContactGraph(ContactGraphBase):
         self.build_anchor_pts()
 
     @property
+    def order(self):
+        return self._max_edge_order + 1
+
+    @property
     def skill_type(self):
         return self._skill_name
 
@@ -63,7 +67,7 @@ class ContactGraph(ContactGraphBase):
             self.adj_matrix[edge.start_node, edge.end_node] = 1
             self.adj_matrix[edge.end_node, edge.start_node] = 1
             self._max_edge_order = max(edge.order, self._max_edge_order)
-        for i in range(self._max_edge_order, self._max_edge_order + 1):
+        for i in range(0, self._max_edge_order + 1):
             self._order2edgemap[i] = []
         for i, e in enumerate(self.edges):
             self._order2edgemap[e.order].append(i)
