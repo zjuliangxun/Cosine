@@ -37,6 +37,7 @@ class ContactGraph(ContactGraphBase):
         self.add_edge(edges)
         self.build_adj_matrix()
         self.build_anchor_pts()
+        self.build_order_time_range()
 
     @property
     def order(self):
@@ -135,7 +136,7 @@ class ContactGraph(ContactGraphBase):
                 e.order,
                 e.start_frame,
                 e.end_frame,
-            )  # TODO this keeps the original order and frame number
+            )
             for e in self.edges
             if e.start_node in nodeid and e.end_node in nodeid
         ]
@@ -168,6 +169,7 @@ class ContactGraph(ContactGraphBase):
         self.add_node(subgraph.nodes)
         self.build_adj_matrix()
         self.build_anchor_pts()
+        self.build_order_time_range()
 
     def build_anchor_pts(self):
         # the nodes of input graphs can fall in circles of head/tail anchor pts
@@ -187,3 +189,20 @@ class ContactGraph(ContactGraphBase):
     def to_batch(self):
         # transform the graph to a Batch object in pytorch geometric for batch processing
         return Data(x=self._node_feat_tensor, edge_index=self._edge_feat_tensor)
+
+    def build_order_time_range(self):
+        self.order_time_tensor = []
+        for i in range(self.order):
+            for node in self.nodes:
+                if node.order == i:
+                    self.order_time_tensor.extend([node.start_time, node.end_time])
+                    break
+            else:
+                raise ValueError("Node order not continuous")
+        self.order_time_tensor = torch.tensor(
+            self.order_time_tensor, device=self.device
+        ).reshape(-1, 2)
+
+    @property
+    def order_time_range(self):
+        return self.order_time_tensor

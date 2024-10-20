@@ -61,18 +61,18 @@ class ReplayBuffer:
 
         n = next(iter(data_dict.values())).shape[0]
         buffer_size = self.get_buffer_size()
-        assert(n <= buffer_size)
+        assert n <= buffer_size
 
         for key, curr_buf in self._data_buf.items():
             curr_n = data_dict[key].shape[0]
-            assert(n == curr_n)
+            assert n == curr_n
 
             store_n = min(curr_n, buffer_size - self._head)
-            curr_buf[self._head:(self._head + store_n)] = data_dict[key][:store_n]    
-        
+            curr_buf[self._head : (self._head + store_n)] = data_dict[key][:store_n]
+
             remainder = n - store_n
             if remainder > 0:
-                curr_buf[0:remainder] = data_dict[key][store_n:]  
+                curr_buf[0:remainder] = data_dict[key][store_n:]
 
         self._head = (self._head + n) % buffer_size
         self._total_count += n
@@ -114,6 +114,8 @@ class ReplayBuffer:
             if self._numpy_keys is not None and k in self._numpy_keys:
                 self._data_buf[k] = np.zeros((buffer_size,) + v_shape, dtype=np.float32)
             else:
-                self._data_buf[k] = torch.zeros((buffer_size,) + v_shape, device=self._device)
+                self._data_buf[k] = torch.zeros(
+                    (buffer_size,) + v_shape, device=self._device
+                )
 
         return

@@ -37,7 +37,7 @@ import numpy as np
 import torch
 from torch import nn
 
-import agent.replay_buffer as replay_buffer
+import data.replay_buffer as replay_buffer
 import agent.common_agent as common_agent
 
 

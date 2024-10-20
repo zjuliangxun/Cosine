@@ -36,7 +36,7 @@ import torch
 from utils import torch_utils
 from data.motion_lib import MotionLib
 from sim.humanoid import Humanoid, dof_to_obs
-from sim.strategy.reset import ResetStrategy
+from sim.strategy.reset import AMPResetStrategy
 from sim.strategy.early_term import TerminateByHeight
 
 

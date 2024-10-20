@@ -47,6 +47,8 @@ class CNode(DeviceMixin):
         normal,
         skeleton_id: SkeletonID,
         order: int,
+        start_time,
+        end_time,
         sustain_time: int = 1,
         device="cpu",
     ):
@@ -56,6 +58,8 @@ class CNode(DeviceMixin):
         self._velocity = None
         self._order = order
         self._sustain_time = sustain_time
+        self.start_time = start_time
+        self.end_time = end_time
         self.skeleton_id = (
             skeleton_id.value
             if isinstance(skeleton_id, SkeletonID)

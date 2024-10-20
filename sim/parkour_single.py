@@ -1,14 +1,15 @@
-from typing import List
+import time
 from isaacgym import torch_utils, gymapi
 from torch_geometric.data import Data, Batch
 import torch
-import time
 from data.skill_lib import SkillLib
 from data.contact_graph_base import CNode
 from sim.humanoid_amp import HumanoidAMPTask
 from sim.terrian.base_terrian import TerrainParkour
 
 
+# TODO render contact points
+# TODO legged robots有很多trick
 # TODO 定期刷新env系统，有些变量应该需要处理归入一个函数中去
 class ParkourSingle(HumanoidAMPTask):
     def __init__(
@@ -266,7 +267,7 @@ class ParkourSingle(HumanoidAMPTask):
     def _update_reward_goals(self):
         self.time_out_buf += 1
         # for a node group, if contact frames exceeds required num, then move the goal to the next node(e.g. for idle)
-        cur_cg_id = self._get_env_cur_cg_id()
+        cur_cg_id = self.get_env_cur_cg_id()
         mask_update = self.goal_reach_time_buf >= self.cg_sustain_times[cur_cg_id]
         self.node_progress_buf[mask_update] += 1
         self.time_out_buf[mask_update] = 0
@@ -277,7 +278,7 @@ class ParkourSingle(HumanoidAMPTask):
         return
 
     ############### utils ################
-    def _get_env_cur_cg_id(self, env_ids=None):
+    def get_env_cur_cg_id(self, env_ids=None):
         if env_ids is None:
             return self.grid_cg_offset[self.env_terrain_id] + self.cg_progress_buf
         env_grid_id = self.env_terrain_id[env_ids]

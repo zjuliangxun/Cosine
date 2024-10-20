@@ -1,21 +1,19 @@
+from typing import Tuple
 import os
 import yaml
+import random, copy
 
 from poselib.poselib.skeleton.skeleton3d import SkeletonMotion
 from poselib.poselib.core.rotation3d import *
 from isaacgym.torch_utils import *
-
-from data.motion_lib import *
-from torch import Tensor
-from typing import Tuple
-
 import torch
+from torch import Tensor
+from torch_geometric.data import Data, Batch
 
 from data.contact_graph import ContactGraph
-import random, copy
+from data.motion_lib import *
 
 
-# TODO 统一skill id和pkl导入的id
 class LoadedMotionsCG(LoadedMotions):
     motion_cgs: Tuple[ContactGraph]
     motion_weights_byskill: Tensor
@@ -212,6 +210,10 @@ class SkillLib(MotionLib):
             motion_files=tuple(motion_files),
             motion_weights_byskill=self._motion_weights_byskill,
         )
+        # the node of order 1 represents the time (0, first contact)
+        self._skill_order_time_map = Batch.from_data_list(
+            [Data(x=cg.order_time_range()) for cg in self._motion_cgs]
+        )
 
         num_motions = self.num_motions()
         total_len = self.get_total_length()
@@ -243,6 +245,21 @@ class SkillLib(MotionLib):
 
         # don't allow negative phase
         motion_time = phase * torch.clip(motion_len, min=0)
+        return motion_time
+
+    def sample_time_byorder(self, motion_ids, rand_order):
+        motion_order_time_map = Batch.from_data_list(
+            self._skill_order_time_map.index_select(motion_ids)
+        )
+        num_nodes_per_graph = torch.bincount(motion_order_time_map.batch)
+        cumsum_nodes = torch.cumsum(
+            torch.cat([torch.tensor([0]), num_nodes_per_graph]), dim=0
+        )
+        selected_node_indices = cumsum_nodes[:-1] + rand_order
+        prob = motion_order_time_map.x[selected_node_indices]
+        motion_time = (
+            torch.rand_like(rand_order) / (prob[:, 1:] - prob[:, :0]) + prob[:, :0]
+        )
         return motion_time
 
     def get_cg_by_skill(self, skill_name) -> ContactGraph:
