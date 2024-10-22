@@ -41,10 +41,9 @@ from sim.strategy.early_term import TerminateByHeight
 
 
 class HumanoidAMPBase(Humanoid):
-    def __init__(
-        self, cfg, sim_params, physics_engine, device_type, device_id, headless
-    ):
-        self.reset_strategy = ResetStrategy(
+    def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
+        # BUG 这几个容易在外边重复初始化，所以最好用hydra做
+        self.reset_strategy = AMPResetStrategy(
             self,
             state_init=cfg["env"]["stateInit"],
             hybrid_init_prob=cfg["env"]["hybridInitProb"],
@@ -68,9 +67,7 @@ class HumanoidAMPBase(Humanoid):
         ############### amp realted buffers ################
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
         assert self._num_amp_obs_steps >= 2
-        self._num_amp_obs_enc_steps = cfg["env"].get(
-            "numAMPEncObsSteps", self._num_amp_obs_steps
-        )
+        self._num_amp_obs_enc_steps = cfg["env"].get("numAMPEncObsSteps", self._num_amp_obs_steps)
 
         self._amp_obs_buf = torch.zeros(
             (self.num_envs, self._num_amp_obs_steps, self._num_amp_obs_per_step),
@@ -105,9 +102,7 @@ class HumanoidAMPBase(Humanoid):
         # since negative times are added to these values in build_amp_obs_demo,
         # we shift them into the range [0 + truncate_time, end of clip]
         truncate_time = self.dt * (self._num_amp_obs_steps - 1)
-        motion_times0 = self._motion_lib.sample_time(
-            motion_ids, truncate_time=truncate_time
-        )
+        motion_times0 = self._motion_lib.sample_time(motion_ids, truncate_time=truncate_time)
         motion_times0 += truncate_time
 
         amp_obs_demo_flat = (
@@ -119,29 +114,21 @@ class HumanoidAMPBase(Humanoid):
         return amp_obs_demo_flat
 
     def fetch_amp_obs_demo_per_id(self, num_samples, motion_id):
-        motion_ids = torch.tensor(
-            [motion_id for _ in range(num_samples)], dtype=torch.long
-        ).view(-1)
+        motion_ids = torch.tensor([motion_id for _ in range(num_samples)], dtype=torch.long).view(-1)
 
         # since negative times are added to these values in build_amp_obs_demo,
         # we shift them into the range [0 + truncate_time, end of clip]
         enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
 
-        enc_motion_times = self._motion_lib.sample_time(
-            motion_ids, truncate_time=enc_window_size
-        )
+        enc_motion_times = self._motion_lib.sample_time(motion_ids, truncate_time=enc_window_size)
         # make sure not to add more than motion clip length, negative amp_obs will show zero index amp_obs instead
-        enc_motion_times += torch.clip(
-            self._motion_lib._motion_lengths[motion_ids], max=enc_window_size
+        enc_motion_times += torch.clip(self._motion_lib._motion_lengths[motion_ids], max=enc_window_size)
+
+        enc_amp_obs_demo = self.build_amp_obs_demo(motion_ids, enc_motion_times, self._num_amp_obs_enc_steps).view(
+            -1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step
         )
 
-        enc_amp_obs_demo = self.build_amp_obs_demo(
-            motion_ids, enc_motion_times, self._num_amp_obs_enc_steps
-        ).view(-1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step)
-
-        enc_amp_obs_demo_flat = enc_amp_obs_demo.to(self.device).view(
-            -1, self.get_num_enc_amp_obs()
-        )
+        enc_amp_obs_demo_flat = enc_amp_obs_demo.to(self.device).view(-1, self.get_num_enc_amp_obs())
 
         return motion_ids, enc_motion_times, enc_amp_obs_demo_flat
 
@@ -155,8 +142,8 @@ class HumanoidAMPBase(Humanoid):
 
         motion_ids = motion_ids.view(-1)
         motion_times = motion_times.view(-1)
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = (
-            self._motion_lib.get_motion_state(motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = self._motion_lib.get_motion_state(
+            motion_ids, motion_times
         )
         amp_obs_demo = build_amp_observations(
             root_pos,
@@ -227,9 +214,7 @@ class HumanoidAMPBase(Humanoid):
     def get_task_obs_size(self):
         return 0
 
-    def _set_env_state(
-        self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel
-    ):
+    def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
         self._humanoid_root_states[env_ids, 0:3] = root_pos
         self._humanoid_root_states[env_ids, 3:7] = root_rot
         self._humanoid_root_states[env_ids, 7:10] = root_vel
@@ -282,9 +267,7 @@ class HumanoidAMPBase(Humanoid):
 
 
 class HumanoidAMPTask(HumanoidAMPBase):
-    def __init__(
-        self, cfg, sim_params, physics_engine, device_type, device_id, headless
-    ):
+    def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         self._enable_task_obs = cfg["env"]["enableTaskObs"]
 
         super().__init__(

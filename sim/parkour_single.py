@@ -12,26 +12,18 @@ from sim.terrian.base_terrian import TerrainParkour
 # TODO legged robots有很多trick
 # TODO 定期刷新env系统，有些变量应该需要处理归入一个函数中去
 class ParkourSingle(HumanoidAMPTask):
-    def __init__(
-        self, cfg, sim_params, physics_engine, device_type, device_id, headless
-    ):
+    def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         self.terrain: TerrainParkour = None
         self._cg_nums = 0
 
-        super().__init__(
-            cfg, sim_params, physics_engine, device_type, device_id, headless
-        )
+        super().__init__(cfg, sim_params, physics_engine, device_type, device_id, headless)
         # ---------------init contact graph buffers----------------
         if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
             # 每个环境属于哪个grid
-            self.env_terrain_id = torch.randint(
-                0, self.cfg.num_sub_terrains, (self.num_envs), device=self.device
-            )
+            self.env_terrain_id = torch.randint(0, self.cfg.num_sub_terrains, (self.num_envs), device=self.device)
             # 每个grid的所有cg数目和node数目
-            self.terrain_cg_nums = torch.tensor(
-                [len(x) for x in graph_list], device=self.device, dtype=torch.long
-            )
+            self.terrain_cg_nums = torch.tensor([len(x) for x in graph_list], device=self.device, dtype=torch.long)
             self.grid_cg_ord_num = torch.tensor(
                 [x.order for cgs in graph_list for x in cgs],
                 device=self.device,
@@ -43,11 +35,7 @@ class ParkourSingle(HumanoidAMPTask):
                 dtype=torch.long,
             )
             self.env_skill_id = torch.tensor(
-                [
-                    self._motion_lib.get_skill_id(cg.skill_type)
-                    for cgs in graph_list
-                    for cg in cgs
-                ],
+                [self._motion_lib.get_skill_id(cg.skill_type) for cgs in graph_list for cg in cgs],
                 device=self.device,
                 dtype=torch.long,
             )[self.env_terrain_id]
@@ -60,9 +48,7 @@ class ParkourSingle(HumanoidAMPTask):
                 for cg in cgs:
                     self._cg_rot_inv.append(cg._root_rotation)
                     self._cg_trans_inv.append(cg._root_translation)
-            self.grid_cg_offset = torch.tensor(
-                grid_cg_offset, device=self.device, dtype=torch.long
-            )  # cumsum
+            self.grid_cg_offset = torch.tensor(grid_cg_offset, device=self.device, dtype=torch.long)  # cumsum
             self._cg_rot_inv, self._cg_trans_inv = torch_utils.tf_inverse(
                 torch.cat(self._cg_rot_inv),
                 torch.cat(self._cg_trans_inv),
@@ -85,9 +71,7 @@ class ParkourSingle(HumanoidAMPTask):
             self.time_out_buf = torch.zeros_like(self.progress_buf)
             # num of frames contacting with the current goal
             self.goal_reach_time_buf = torch.zeros_like(self.progress_buf)
-            self.goal_reached_buf = torch.zeros(
-                self.num_envs, device=self.device, dtype=torch.bool
-            )
+            self.goal_reached_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
             self.root_trans = torch.tensor(  # TODO need 刷新当环境改变，
                 [list(cgs[0].get_coord(), dim=-1) for cgs in graph_list]
             )
@@ -118,9 +102,7 @@ class ParkourSingle(HumanoidAMPTask):
             elif mesh_type == "trimesh":
                 self._create_trimesh()
         elif mesh_type is not None:
-            raise ValueError(
-                "Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]"
-            )
+            raise ValueError("Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]")
         print("Finished creating ground. Time taken {:.2f} s".format(time() - start))
 
     def _create_heightfield(self):
@@ -138,13 +120,9 @@ class ParkourSingle(HumanoidAMPTask):
         hf_params.dynamic_friction = self.cfg.terrain.dynamic_friction
         hf_params.restitution = self.cfg.terrain.restitution
 
-        self.gym.add_heightfield(
-            self.sim, self.terrain.heightsamples.flatten(order="C"), hf_params
-        )
+        self.gym.add_heightfield(self.sim, self.terrain.heightsamples.flatten(order="C"), hf_params)
         self.height_samples = (
-            torch.tensor(self.terrain.heightsamples)
-            .view(self.terrain.tot_rows, self.terrain.tot_cols)
-            .to(self.device)
+            torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
         )
 
     def _create_trimesh(self):
@@ -170,9 +148,7 @@ class ParkourSingle(HumanoidAMPTask):
         )
         print("Trimesh added")
         self.height_samples = (
-            torch.tensor(self.terrain.heightsamples)
-            .view(self.terrain.tot_rows, self.terrain.tot_cols)
-            .to(self.device)
+            torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
         )
 
     def _load_motion(self, motion_file):
@@ -213,16 +189,11 @@ class ParkourSingle(HumanoidAMPTask):
         )
         delta_tf = torch.cat([q, t], dim=1)
 
-        for ids, key in zip(
-            self._get_env_cur_next_cg_id(env_ids), ("graph_obs", "graph_obs_next")
-        ):
-            batch = Batch.from_data_list(self.grid_cgs.index_select(ids))
+        for ids, key in zip(self._get_env_cur_next_cg_id(env_ids), ("graph_obs", "graph_obs_next")):
+            batch = Batch.from_data_list(self.grid_cgs.index_select(ids))  # [ ] copy? or what
             node_counts = torch.bincount(batch.batch)
             expand_tf = torch.cat(
-                [
-                    delta_tf[i].unsqueeze(0).expand(node_counts[i], -1)
-                    for i in range(delta_tf.size(0))
-                ]
+                [delta_tf[i].unsqueeze(0).expand(node_counts[i], -1) for i in range(delta_tf.size(0))]
             )
             batch.x = CNode.tf_apply_onfeat(expand_tf[0:4], expand_tf[4:], batch.x)
             self.extras[key] = batch
@@ -247,14 +218,10 @@ class ParkourSingle(HumanoidAMPTask):
         # TODO weight
         d = torch.norm(ske_state[..., :3] - filtered_x[..., :3])
         rd = torch.exp(-d + 1e-7)
-        self.goal_reached_buf.scatter_reduce_(
-            0, filtered_batch_id, d > self.cfg.reward.rd_thresh, reduce="sum"
-        )
+        self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d > self.cfg.reward.rd_thresh, reduce="sum")
 
         # BUG Reproducibility issue
-        self.rew_buf[:] = self.rew_buf.scatter_reduce(
-            0, filtered_batch_id, rd, reduce="sum"
-        )
+        self.rew_buf[:] = self.rew_buf.scatter_reduce(0, filtered_batch_id, rd, reduce="sum")
 
         self.goal_reach_time_buf[self.goal_reached_buf] += 1
         self._update_reward_goals()
