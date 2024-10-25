@@ -171,9 +171,7 @@ class GraphBase(DeviceMixin):
     def merge(self, graph):
         return NotImplementedError
 
-    def deform(self, nodeid: List[int], t, q):
-        # TODO select some nodes by id and apply a transformation to them
-        # note that under the init graph coord! along x...
+    def deform(self):
         return NotImplementedError
 
     def segment(self, graph_srcs, graph_tars):

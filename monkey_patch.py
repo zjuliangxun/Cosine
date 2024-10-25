@@ -1,4 +1,5 @@
 import rl_games.common.experience as experience
+from rl_games.common import a2c_common
 from torch_geometric.data import Data, Batch
 from typing import List
 
@@ -30,8 +31,8 @@ class ExperienceBufferPyG(BaseExpBuffer):
                 transformed_dict[kd] = transform_op(vd)
             return transformed_dict
         elif (type(v) is List) and (type(v[0]) is Batch):
-            # assert transform_op == a2c_common.swap_and_flatten01
-            tmp = [Batch.from_data_list([v[j][i] for j in range(self.horizon_length)]) for i in range(self.num_actors)]
+            assert transform_op == a2c_common.swap_and_flatten01
+            tmp = [[v[j][i] for j in range(self.horizon_length)] for i in range(self.num_actors)]
             return Batch.from_data_list(tmp)
         else:
             return transform_op(v)
