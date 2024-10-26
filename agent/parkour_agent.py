@@ -12,7 +12,6 @@ import agent.amp_agent as amp_agent
 import data.replay_buffer as replay_buffer
 
 
-# TODO 图的normalize
 class ParkourAgent(amp_agent.AMPAgent):
     """Use vanilla AMP backend, no conditional GAN"""
 
@@ -20,6 +19,48 @@ class ParkourAgent(amp_agent.AMPAgent):
         super().__init__(base_name, config)
         self.experience_buffer.tensor_dict["graph_obs"] = [None] * self.experience_buffer.horizon_length
         self.experience_buffer.tensor_dict["graph_obs_next"] = [None] * self.experience_buffer.horizon_length
+
+        # [ ] cond disc 需要额外调用_preproc_task_obs
+        self._normalize_graph_input = config.agent.get("normalize_graph_input", True)
+        if self._normalize_graph_input:
+            self._graph_input_mean_std = RunningMeanStd((config.agent.graph_feat_dim,)).to(self.ppo_device)
+
+        return
+
+    def set_eval(self):
+        super().set_eval()
+        if self._normalize_graph_input:
+            self._graph_input_mean_std.eval()
+        return
+
+    def set_train(self):
+        super().set_train()
+        if self._normalize_graph_input:
+            self._graph_input_mean_std.train()
+        return
+
+    def get_stats_weights(self):
+        state = super().get_stats_weights()
+        if self._normalize_graph_input:
+            state["graph_input_mean_std"] = self._graph_input_mean_std.state_dict()
+
+        return state
+
+    def set_stats_weights(self, weights):
+        super().set_stats_weights(weights)
+        if self._normalize_graph_input:
+            self._graph_input_mean_std.load_state_dict(weights["graph_input_mean_std"])
+        return
+
+    def _preproc_task_obs(self, graph_obs):
+        if self._normalize_graph_input:
+            graph_obs.x = self._amp_input_mean_std(graph_obs.x)
+        return graph_obs
+
+    def calc_gradients(self, input_dict):
+        input_dict["graph_obs"] = self._preproc_task_obs(input_dict["graph_obs"])
+        input_dict["graph_obs_next"] = self._preproc_task_obs(input_dict["graph_obs_next"])
+        return super().calc_gradients(input_dict)
 
     def prepare_dataset(self, batch_dict):
         super().prepare_dataset(batch_dict)

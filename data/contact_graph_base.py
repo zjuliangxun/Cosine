@@ -60,11 +60,7 @@ class CNode(DeviceMixin):
         self._sustain_time = sustain_time
         self.start_time = start_time
         self.end_time = end_time
-        self.skeleton_id = (
-            skeleton_id.value
-            if isinstance(skeleton_id, SkeletonID)
-            else int(skeleton_id)
-        )
+        self.skeleton_id = skeleton_id.value if isinstance(skeleton_id, SkeletonID) else int(skeleton_id)
         for attr, value in self.__dict__.items():
             if isinstance(value, List):
                 setattr(self, attr, tf.to_torch(value, device=device))
@@ -108,9 +104,7 @@ class CNode(DeviceMixin):
             [
                 self._position,
                 self.normal,
-                torch.tensor(
-                    [self.skeleton_id.value, self._order], device=self._position.device
-                ),
+                torch.tensor([self.skeleton_id.value, self._order], device=self._position.device),
             ]
         )
 
