@@ -67,17 +67,15 @@ def compute_humanoid_reset(
         has_fallen *= progress_buf > 1
         terminated = torch.where(has_fallen, torch.ones_like(reset_buf), terminated)
 
-    reset = torch.where(
-        progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), terminated
-    )
+    reset = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), terminated)
 
     return reset, terminated
 
 
 class TerminateByContact(TerminateByHeight):
-    def __init__(self, ctx: ParkourSingle):
+    def __init__(self, ctx: ParkourSingle, time_out_thresh: int = 120):
         super().__init__(ctx)
-        self.time_out_thresh = 1000  # TODO frames * 4s
+        self.time_out_thresh = time_out_thresh  # int(4 / ctx.dt)
 
     def compute_reset(self):
         ctx = self.ctx

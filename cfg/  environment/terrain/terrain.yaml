@@ -40,3 +40,6 @@ Terrain:
   origin_zero_z: True
 
   num_goals: 8
+
+  # my own parameters
+  add_idle_to_last: True

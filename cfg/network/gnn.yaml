@@ -1,0 +1,37 @@
+name: parkour
+separate: True
+
+space:
+  continuous:
+    mu_activation: None
+    sigma_activation: None
+    mu_init:
+      name: default
+    sigma_init:
+      name: const_initializer
+      val: -2.9
+    fixed_sigma: True
+    learn_sigma: False
+
+mlp:
+  units: [1024, 512]
+  activation: relu
+  d2rl: False
+
+  initializer:
+    name: default
+  regularizer:
+    name: None
+
+disc:
+  units: [1024, 1024, 512]
+  activation: relu
+
+  initializer:
+    name: default
+
+graph_obs_net:
+  node_features_dim: 8
+  output_features_dim: 16
+  hidden_dim: 32
+  num_heads: 4

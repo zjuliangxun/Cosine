@@ -1,5 +1,5 @@
 import time
-from isaacgym import torch_utils, gymapi
+from isaacgym import torch_utils, gymapi, gymutil
 from torch_geometric.data import Data, Batch
 import torch
 from data.skill_lib import SkillLib
@@ -8,7 +8,6 @@ from sim.humanoid_amp import HumanoidAMPTask
 from sim.terrian.base_terrian import TerrainParkour
 
 
-# TODO render contact points
 # TODO legged robots有很多trick
 # TODO 定期刷新env系统，有些变量应该需要处理归入一个函数中去
 class ParkourSingle(HumanoidAMPTask):
@@ -17,7 +16,7 @@ class ParkourSingle(HumanoidAMPTask):
         self._cg_nums = 0
 
         super().__init__(cfg, sim_params, physics_engine, device_type, device_id, headless)
-        # ---------------init contact graph buffers----------------
+        #################### init contact graph buffers #####################
         if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
             # 每个环境属于哪个grid
@@ -40,11 +39,11 @@ class ParkourSingle(HumanoidAMPTask):
                 dtype=torch.long,
             )[self.env_terrain_id]
             # 初始化每个cg在大的图里的i位置
-            grid_cg_offset, x = [], 0
+            grid_cg_offset, cnt = [], 0
             self._cg_rot_inv, self._cg_trans_inv = [], []
             for cgs in graph_list:
-                grid_cg_offset.append(x)
-                x += len(cgs)
+                grid_cg_offset.append(cnt)
+                cnt += len(cgs)
                 for cg in cgs:
                     self._cg_rot_inv.append(cg._root_rotation)
                     self._cg_trans_inv.append(cg._root_translation)
@@ -63,7 +62,7 @@ class ParkourSingle(HumanoidAMPTask):
                     for grid_cgs in graph_list
                     for cg in grid_cgs
                 ]
-            )  # TODO 给最后一个加上idle图 cankao G262
+            )
 
             self.node_progress_buf = torch.zeros_like(self.progress_buf)
             self.cg_progress_buf = torch.zeros_like(self.progress_buf)
@@ -87,7 +86,7 @@ class ParkourSingle(HumanoidAMPTask):
 
     def _create_ground_plane(self):
         """create terrain after sim initialization/before env creation"""
-        # if self.cfg.depth.use_camera: TODO
+        # TODO if self.cfg.depth.use_camera:
         #     self.graphics_device_id = self.sim_device_id  # required in headless mode
 
         start = time()
@@ -215,10 +214,9 @@ class ParkourSingle(HumanoidAMPTask):
         self.goal_reach_time_buf.set_(False)
 
         # reward distance
-        # TODO weight
         d = torch.norm(ske_state[..., :3] - filtered_x[..., :3])
         rd = torch.exp(-d + 1e-7)
-        self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d > self.cfg.reward.rd_thresh, reduce="sum")
+        self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d > self.cfg.contact.reached_thresh, reduce="sum")
 
         # BUG Reproducibility issue
         self.rew_buf[:] = self.rew_buf.scatter_reduce(0, filtered_batch_id, rd, reduce="sum")
@@ -261,3 +259,134 @@ class ParkourSingle(HumanoidAMPTask):
             env_cur_cg_id + 1,
         )
         return env_cur_cg_id, env_next_cg_id
+
+    ############### draw task ################
+    def _draw_task(self):
+        if self.cfg.vis_contacts:
+            self.gym.clear_lines(self.viewer)
+
+            # draw contact goals
+            lookat_id = 0  # the id of rendering env
+            unreach_goal = gymutil.WireframeBoxGeometry(0.1, 0.1, 0.15, None, color=(1, 0, 0))
+            reached_goal = gymutil.WireframeBoxGeometry(0.1, 0.1, 0.15, None, color=(0, 1, 0))
+            current_goal = gymutil.WireframeBoxGeometry(0.1, 0.1, 0.15, None, color=(1, 0.67, 0))
+
+            gridid = self.env_terrain_id[lookat_id].cpu().item()
+            cg_offset = self.grid_cg_offset[gridid].cpu().item()
+            cur_cg_id = self.cg_progress_buf[lookat_id].cpu().item()  # [ ] 到底是全局还是每个grid的cg号？
+            cur_node_id = self.node_progress_buf[lookat_id].cpu().item()
+
+            cg_list = self.terrain.get_graph_list()[gridid]
+            for i, cg in enumerate(cg_list):
+                goal_positions = cg.get_feat_tensor(device="cpu")[:, :3]
+                for j in range(len(goal_positions)):
+                    goal = goal_positions[j]
+                    goal_xy = goal[:2] + self.terrain.cfg.border_size
+                    pts = (goal_xy / self.terrain.cfg.horizontal_scale).astype(int)
+                    goal_z = self.height_samples[pts[0], pts[1]].cpu().item() * self.terrain.cfg.vertical_scale
+                    pose = gymapi.Transform(gymapi.Vec3(goal[0], goal[1], goal_z), r=None)
+
+                    i += cg_offset
+                    if i == cur_cg_id and j == cur_node_id:
+                        flag = current_goal
+                    elif i < cur_cg_id or (i == cur_cg_id and j < cur_node_id):
+                        flag = reached_goal
+                    else:
+                        flag = unreach_goal
+                    gymutil.draw_lines(flag, self.gym, self.viewer, self.envs[lookat_id], pose)
+
+        super()._draw_task()
+        return
+
+    def fetch_amp_obs_demo(self, num_samples):
+        motion_ids = self._motion_lib.sample_motions(num_samples)
+
+        # since negative times are added to these values in build_amp_obs_demo,
+        # we shift them into the range [0 + truncate_time, end of clip]
+        truncate_time = self.dt * (self._num_amp_obs_steps - 1)
+        motion_times0 = self._motion_lib.sample_time(motion_ids, truncate_time=truncate_time)
+        motion_times0 += truncate_time
+
+        amp_obs_demo_flat = (
+            self.build_amp_obs_demo(motion_ids, motion_times0, self._num_amp_obs_steps)
+            .to(self.device)
+            .view(-1, self.get_num_amp_obs())
+        )
+
+        return amp_obs_demo_flat
+
+    def fetch_amp_obs_demo_per_id(self, num_samples, motion_id):
+        motion_ids = torch.tensor([motion_id for _ in range(num_samples)], dtype=torch.long).view(-1)
+
+        # since negative times are added to these values in build_amp_obs_demo,
+        # we shift them into the range [0 + truncate_time, end of clip]
+        enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
+
+        enc_motion_times = self._motion_lib.sample_time(motion_ids, truncate_time=enc_window_size)
+        # make sure not to add more than motion clip length, negative amp_obs will show zero index amp_obs instead
+        enc_motion_times += torch.clip(self._motion_lib._motion_lengths[motion_ids], max=enc_window_size)
+
+        enc_amp_obs_demo = self.build_amp_obs_demo(motion_ids, enc_motion_times, self._num_amp_obs_enc_steps).view(
+            -1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step
+        )
+
+        enc_amp_obs_demo_flat = enc_amp_obs_demo.to(self.device).view(-1, self.get_num_enc_amp_obs())
+
+        return motion_ids, enc_motion_times, enc_amp_obs_demo_flat
+
+    def fetch_amp_obs_demo_enc_pair(self, num_samples):
+        motion_ids = self._motion_lib.sample_motions(num_samples)
+
+        # since negative times are added to these values in build_amp_obs_demo,
+        # we shift them into the range [0 + truncate_time, end of clip]
+        enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
+
+        enc_motion_times = self._motion_lib.sample_time(motion_ids, truncate_time=enc_window_size)
+        # make sure not to add more than motion clip length, negative amp_obs will show zero index amp_obs instead
+        enc_motion_times += torch.clip(self._motion_lib._motion_lengths[motion_ids], max=enc_window_size)
+
+        # sub-window-size is for the amp_obs contained within the enc-amp-obs. make sure we sample only within the valid portion of the motion
+        sub_window_size = (
+            torch.clip(self._motion_lib._motion_lengths[motion_ids], max=enc_window_size)
+            - self.dt * self._num_amp_obs_steps
+        )
+        motion_times = enc_motion_times - torch.rand(enc_motion_times.shape, device=self.device) * sub_window_size
+
+        enc_amp_obs_demo = self.build_amp_obs_demo(motion_ids, enc_motion_times, self._num_amp_obs_enc_steps).view(
+            -1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step
+        )
+        amp_obs_demo = self.build_amp_obs_demo(motion_ids, motion_times, self._num_amp_obs_steps).view(
+            -1, self._num_amp_obs_steps, self._num_amp_obs_per_step
+        )
+
+        enc_amp_obs_demo_flat = enc_amp_obs_demo.to(self.device).view(-1, self.get_num_enc_amp_obs())
+        amp_obs_demo_flat = amp_obs_demo.to(self.device).view(-1, self.get_num_amp_obs())
+
+        return motion_ids, enc_motion_times, enc_amp_obs_demo_flat, motion_times, amp_obs_demo_flat
+
+    def fetch_amp_obs_demo_pair(self, num_samples):
+        motion_ids = self._motion_lib.sample_motions(num_samples)
+        cat_motion_ids = torch.cat((motion_ids, motion_ids), dim=0)
+
+        # since negative times are added to these values in build_amp_obs_demo,
+        # we shift them into the range [0 + truncate_time, end of clip]
+        enc_window_size = self.dt * (self._num_amp_obs_enc_steps - 1)
+
+        motion_times0 = self._motion_lib.sample_time(motion_ids, truncate_time=enc_window_size)
+        motion_times0 += torch.clip(self._motion_lib._motion_lengths[motion_ids], max=enc_window_size)
+
+        motion_times1 = motion_times0 + torch.rand(motion_times0.shape, device=self._motion_lib._device) * 0.5
+        motion_times1 = torch.min(motion_times1, self._motion_lib._motion_lengths[motion_ids])
+
+        motion_times = torch.cat((motion_times0, motion_times1), dim=0)
+
+        amp_obs_demo = self.build_amp_obs_demo(cat_motion_ids, motion_times, self._num_amp_obs_enc_steps).view(
+            -1, self._num_amp_obs_enc_steps, self._num_amp_obs_per_step
+        )
+        amp_obs_demo0, amp_obs_demo1 = torch.split(amp_obs_demo, num_samples)
+
+        amp_obs_demo0_flat = amp_obs_demo0.to(self.device).view(-1, self.get_num_enc_amp_obs())
+
+        amp_obs_demo1_flat = amp_obs_demo1.to(self.device).view(-1, self.get_num_enc_amp_obs())
+
+        return motion_ids, motion_times0, amp_obs_demo0_flat, motion_times1, amp_obs_demo1_flat

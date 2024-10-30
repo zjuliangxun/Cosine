@@ -31,7 +31,7 @@ import numpy as np
 import time
 from isaacgym.torch_utils import *
 import torch
-
+import hydra
 
 from utils import torch_utils
 from data.motion_lib import MotionLib
@@ -42,14 +42,6 @@ from sim.strategy.early_term import TerminateByHeight
 
 class HumanoidAMPBase(Humanoid):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
-        # BUG 这几个容易在外边重复初始化，所以最好用hydra做
-        self.reset_strategy = AMPResetStrategy(
-            self,
-            state_init=cfg["env"]["stateInit"],
-            hybrid_init_prob=cfg["env"]["hybridInitProb"],
-        )
-        self.terminate_strategy = TerminateByHeight()
-
         super().__init__(
             cfg=cfg,
             sim_params=sim_params,
@@ -76,6 +68,9 @@ class HumanoidAMPBase(Humanoid):
         )
         self._curr_amp_obs_buf = self._amp_obs_buf[:, 0]
         self._hist_amp_obs_buf = self._amp_obs_buf[:, 1:]
+
+        self.reset_strategy: AMPResetStrategy = hydra.utils.instantiate(cfg.reset, ctx=self)
+        self.terminate_strategy: TerminateByHeight = hydra.utils.instantiate(cfg.terminate, ctx=self)
 
         return
 

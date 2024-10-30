@@ -190,11 +190,10 @@ class ContactGraphBase(GraphBase):
 
     @property
     def main_direction(self):
-        # stores the original heading direction of the skill TODO: main dir all x in the beg??
         return NotImplementedError
 
     @property
-    def skill_type(self):  # 动作标签
+    def skill_type(self):
         return NotImplementedError
 
     @property

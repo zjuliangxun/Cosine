@@ -12,7 +12,7 @@ class ContactGraph(ContactGraphBase):
         self,
         nodes,
         edges,
-        skill_id: int,
+        skill_name: str,
         use_edge_feat=False,
         directional=True,
         main_direction=None,
@@ -22,12 +22,12 @@ class ContactGraph(ContactGraphBase):
         self._has_deformed = False  # flag to rebuild feature
         self._max_edge_order = 0
         self._order2edgemap = {}
-        self._skill_name = int(skill_id)
+        self._skill_name = skill_name
         self.use_edge_feat = use_edge_feat
         self._edge_feat_tensor = None
         self.set_coord(0, 0, 0, 0, 0, 0)
         if main_direction is None:
-            # x-axis by default, up z TODO
+            # x-axis by default, up z todo
             self._main_direction = torch.tensor([1, 0, 0], device=self.device)
             # if len(self.nodes) >= 2: self._main_direction = self.nodes[-1].position - self.nodes[0].position # Assuming main direction is the vector from the first node to the last
         else:
@@ -56,9 +56,9 @@ class ContactGraph(ContactGraphBase):
         return self._edge_feat_tensor
 
     def set_coord(self, x, y, z, yaw, pitch, roll):
-        self._root_rotation = tf.quat_from_euler_xyz(
-            torch.tensor(yaw), torch.tensor(pitch), torch.tensor(roll)
-        ).to(self.device)
+        self._root_rotation = tf.quat_from_euler_xyz(torch.tensor(yaw), torch.tensor(pitch), torch.tensor(roll)).to(
+            self.device
+        )
         self._root_translation = torch.tensor([x, y, z], device=self.device)
 
     def build_adj_matrix(self):
@@ -81,20 +81,12 @@ class ContactGraph(ContactGraphBase):
     def get_feat_tensor(self, device="cpu"):
         if self._has_deformed:
             self._has_deformed = not self._has_deformed
-            self._node_feat_tensor = torch.stack(
-                [node.node_feature() for node in self.nodes], device=device
-            )
+            self._node_feat_tensor = torch.stack([node.node_feature() for node in self.nodes], device=device)
             if self.use_edge_feat:
                 edge_list = [(edge.start_node, edge.end_node) for edge in self.edges]
-                self._edge_feat_tensor = torch.tensor(
-                    edge_list, dtype=torch.long, device=device
-                )
+                self._edge_feat_tensor = torch.tensor(edge_list, dtype=torch.long, device=device)
         # TODO check if need reverse
-        ret = tuple(
-            CNode.tf_apply_onfeat(
-                self._root_rotation, self._root_translation, self._node_feat_tensor
-            )
-        )
+        ret = tuple(CNode.tf_apply_onfeat(self._root_rotation, self._root_translation, self._node_feat_tensor))
         if self.use_edge_feat:
             ret += tuple(self._edge_feat_tensor)
         return ret
@@ -104,11 +96,9 @@ class ContactGraph(ContactGraphBase):
             raise ValueError
         return [self.edges[idx] for idx in self._order2edgemap[order]]
 
-    def get_main_line(self):
+    def get_main_line(self):  # TODO idle就不能这么搞
         # random pickup a node from head/tail anchor
-        return torch.cat(
-            [self._head_anchors[0], self._tail_anchors[0]], dim=0, device=self.device
-        )
+        return torch.cat([self._head_anchors[0], self._tail_anchors[0]], dim=0, device=self.device)
 
     def deform(self):
         # first stretch the graph randomly alone x/y/z
@@ -117,8 +107,7 @@ class ContactGraph(ContactGraphBase):
             torch.rand(3, device=self.device) * 0.4 + 0.8
         )  # Uniformly sample scale factors between 0.8 and 1.2
         self.transform(scale=scale_factors.to(self.device))
-        # secondly adjust some positions of cetain nodes
-        # HACK: for better curriculum, we deform the height depend on skills
+        # secondly adjust some positions of cetain nodes, for better curriculum, we deform the height depend on skills
         if self.skill_type == "vault":
             pass  # TODO
 
@@ -147,9 +136,7 @@ class ContactGraph(ContactGraphBase):
         # choose the anchor_points based on head/tail
         # calculate the possible range the input CG anchor may locate
         # !This only merge with the head of next point
-        subgraph = graph.get_subgraph(
-            [i for i in graph._head_anchors.union(graph._head_anchors1)]
-        )
+        subgraph = graph.get_subgraph([i for i in graph._head_anchors.union(graph._head_anchors1)])
         # rotate then translate the input graph so that the anchor points are the same
         q_inv, t_inv = tf.tf_inverse(self._root_rotation, self._root_translation)
         delta_tf = tf.tf_combine(q_inv, t_inv, q, t)
@@ -199,9 +186,7 @@ class ContactGraph(ContactGraphBase):
                     break
             else:
                 raise ValueError("Node order not continuous")
-        self.order_time_tensor = torch.tensor(
-            self.order_time_tensor, device=self.device
-        ).reshape(-1, 2)
+        self.order_time_tensor = torch.tensor(self.order_time_tensor, device=self.device).reshape(-1, 2)
 
     @property
     def order_time_range(self):

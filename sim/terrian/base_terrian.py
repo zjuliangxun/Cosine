@@ -1,9 +1,8 @@
 from typing import List
+from isaacgym import terrain_utils, torch_utils
 import random
 import numpy as np
 import torch
-from isaacgym import terrain_utils
-from isaacgym import torch_utils
 
 from sim.terrian.terrain_leggedgym import Terrain
 from sim.terrian.geometric import draw_rectangle_
@@ -18,9 +17,7 @@ class TerrainParkour(Terrain):
         self._motion_lib = motion_lib
 
         self._offset = torch.tensor([5, cfg.terrrain_width // 2, 0])
-        self._ego2pixel_scale = torch.tensor(
-            [cfg.horizontal_scale, cfg.horizontal_scale, cfg.vertical_scale]
-        )
+        self._ego2pixel_scale = torch.tensor([cfg.horizontal_scale, cfg.horizontal_scale, cfg.vertical_scale])
 
         self.graph_list: List[List[ContactGraph]] = []
         # _roll_distribution = torch.distributions.MultivariateNormal(
@@ -40,19 +37,13 @@ class TerrainParkour(Terrain):
     def curiculum(self, use_random=False, max_difficulty=False):
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
-                combine_item = np.random.choice(
-                    self._skill_combinations, p=self._combination_weights
-                )
+                combine_item = np.random.choice(self._skill_combinations, p=self._combination_weights)
                 if not combine_item.fix_order:
                     random.shuffle(combine_item.skills)
-                if max_difficulty and combine_item.diffculty is not None:  # TODO CHECK
-                    terrain = self.make_terrain(
-                        combine_item.skills, np.random.uniform(0.7, 1)
-                    )
+                if max_difficulty:
+                    terrain = self.make_terrain(combine_item.skills, np.random.uniform(0.7, 1))
                 else:
-                    terrain = self.make_terrain(
-                        combine_item.skills, combine_item.diffculty
-                    )
+                    terrain = self.make_terrain(combine_item.skills, combine_item.get("diffculty", None))
 
                 self.add_terrain_to_map(terrain, i, j)
 
@@ -67,9 +58,11 @@ class TerrainParkour(Terrain):
 
         graph_list: List[ContactGraph] = []
         lines, rotations = [], []
-        for skill in skills:
-            assert type(skill) == str
-            cg = self._motion_lib.get_cg_by_skill(skill)
+        if self.cfg.add_idle_to_last:
+            skills.append("idle")
+        for skill_name in skills:
+            assert type(skill_name) == str
+            cg = self._motion_lib.get_cg_by_skill(skill_name)
             if self.cfg.enable_deform:
                 cg.deform()
             if self.cfg.enable_scale:
@@ -85,10 +78,9 @@ class TerrainParkour(Terrain):
             lines.append(line)
             rotations.append(roll)
             graph_list.append(cg)
-            self._cg_nums += 1
             # self.add_roughness(terrain)
 
-        # connect graphs------------------------------------------------
+        ################## connect graphs ##################
         translations = [self._offset.to(lines[0].device)]
         translated_lines = [lines[0] + translations[0]]
         for i in range(1, len(lines)):
@@ -101,7 +93,7 @@ class TerrainParkour(Terrain):
         # NOTE 感觉是从左下角起的env，所以要把cg的坐标系转换到env坐标系
         graph_list[0].set_coord(*self._offset.tolist(), 0.0, 0, rotations[0])
 
-        # generate skill terrains------------------------------------------------
+        ################## generate skill terrains ##################
         for cg, translation, rotation in zip(graph_list, translations, rotations):
             sub_pixel_length, sub_pixel_height = (
                 int(cg.len_x / self.cfg.horizontal_scale),
@@ -112,10 +104,7 @@ class TerrainParkour(Terrain):
             if cg.skill_type == "vault" or cg.skill_type == "jump":
                 self.generate_vault_terrain(subterrain, cg, difficulty)
             elif (
-                cg.skill_type == "run"
-                or cg.skill_type == "walk"
-                or cg.skill_type == "roll"
-                or cg.skill_type == "idle"
+                cg.skill_type == "run" or cg.skill_type == "walk" or cg.skill_type == "roll" or cg.skill_type == "idle"
             ):
                 self.generate_walk_terrain(subterrain, cg, difficulty)
             else:
@@ -181,17 +170,13 @@ class TerrainParkour(Terrain):
         # env_origin_x = (i + 0.5) * self.env_length
         env_origin_x = i * self.env_length + 1.0
         env_origin_y = (j + 0.5) * self.env_width
-        x1 = int(
-            (self.env_length / 2.0 - 0.5) / terrain.horizontal_scale
-        )  # within 1 meter square range
+        x1 = int((self.env_length / 2.0 - 0.5) / terrain.horizontal_scale)  # within 1 meter square range
         x2 = int((self.env_length / 2.0 + 0.5) / terrain.horizontal_scale)
         y1 = int((self.env_width / 2.0 - 0.5) / terrain.horizontal_scale)
         y2 = int((self.env_width / 2.0 + 0.5) / terrain.horizontal_scale)
         if self.cfg.origin_zero_z:
             env_origin_z = 0
         else:
-            env_origin_z = (
-                np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
-            )
+            env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
         # self.env_slope_vec[i, j] = terrain.slope_vector
