@@ -1,0 +1,262 @@
+[
+    {
+        "source": "mixamorig:Hips",
+        "target": "Pelvis",
+        "rsl_retargeting_bone_list_id": 0
+    },
+    {
+        "source": "mixamorig:Spine",
+        "target": "Spine",
+        "rsl_retargeting_bone_list_id": 1
+    },
+    {
+        "source": "mixamorig:Spine1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 2
+    },
+    {
+        "source": "mixamorig:Spine2",
+        "target": "Chest",
+        "rsl_retargeting_bone_list_id": 3
+    },
+    {
+        "source": "mixamorig:Neck",
+        "target": "Neck",
+        "rsl_retargeting_bone_list_id": 4
+    },
+    {
+        "source": "mixamorig:Head",
+        "target": "Head",
+        "rsl_retargeting_bone_list_id": 5
+    },
+    {
+        "source": "mixamorig:RightShoulder",
+        "target": "R_Thorax",
+        "rsl_retargeting_bone_list_id": 6
+    },
+    {
+        "source": "mixamorig:RightArm",
+        "target": "R_Shoulder",
+        "rsl_retargeting_bone_list_id": 7
+    },
+    {
+        "source": "mixamorig:RightForeArm",
+        "target": "R_Elbow",
+        "rsl_retargeting_bone_list_id": 8
+    },
+    {
+        "source": "mixamorig:RightHand",
+        "target": "R_Wrist",
+        "rsl_retargeting_bone_list_id": 9
+    },
+    {
+        "source": "mixamorig:RightHandThumb1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 10
+    },
+    {
+        "source": "mixamorig:RightHandThumb2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 11
+    },
+    {
+        "source": "mixamorig:RightHandThumb3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 12
+    },
+    {
+        "source": "mixamorig:RightHandIndex1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 13
+    },
+    {
+        "source": "mixamorig:RightHandIndex2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 14
+    },
+    {
+        "source": "mixamorig:RightHandIndex3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 15
+    },
+    {
+        "source": "mixamorig:RightHandMiddle1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 16
+    },
+    {
+        "source": "mixamorig:RightHandMiddle2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 17
+    },
+    {
+        "source": "mixamorig:RightHandMiddle3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 18
+    },
+    {
+        "source": "mixamorig:RightHandRing1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 19
+    },
+    {
+        "source": "mixamorig:RightHandRing2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 20
+    },
+    {
+        "source": "mixamorig:RightHandRing3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 21
+    },
+    {
+        "source": "mixamorig:RightHandPinky1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 22
+    },
+    {
+        "source": "mixamorig:RightHandPinky2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 23
+    },
+    {
+        "source": "mixamorig:RightHandPinky3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 24
+    },
+    {
+        "source": "mixamorig:LeftShoulder",
+        "target": "L_Thorax",
+        "rsl_retargeting_bone_list_id": 25
+    },
+    {
+        "source": "mixamorig:LeftArm",
+        "target": "L_Shoulder",
+        "rsl_retargeting_bone_list_id": 26
+    },
+    {
+        "source": "mixamorig:LeftForeArm",
+        "target": "L_Elbow",
+        "rsl_retargeting_bone_list_id": 27
+    },
+    {
+        "source": "mixamorig:LeftHand",
+        "target": "L_Wrist",
+        "rsl_retargeting_bone_list_id": 28
+    },
+    {
+        "source": "mixamorig:LeftHandThumb1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 29
+    },
+    {
+        "source": "mixamorig:LeftHandThumb2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 30
+    },
+    {
+        "source": "mixamorig:LeftHandThumb3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 31
+    },
+    {
+        "source": "mixamorig:LeftHandIndex1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 32
+    },
+    {
+        "source": "mixamorig:LeftHandIndex2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 33
+    },
+    {
+        "source": "mixamorig:LeftHandIndex3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 34
+    },
+    {
+        "source": "mixamorig:LeftHandMiddle1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 35
+    },
+    {
+        "source": "mixamorig:LeftHandMiddle2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 36
+    },
+    {
+        "source": "mixamorig:LeftHandMiddle3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 37
+    },
+    {
+        "source": "mixamorig:LeftHandRing1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 38
+    },
+    {
+        "source": "mixamorig:LeftHandRing2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 39
+    },
+    {
+        "source": "mixamorig:LeftHandRing3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 40
+    },
+    {
+        "source": "mixamorig:LeftHandPinky1",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 41
+    },
+    {
+        "source": "mixamorig:LeftHandPinky2",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 42
+    },
+    {
+        "source": "mixamorig:LeftHandPinky3",
+        "target": "",
+        "rsl_retargeting_bone_list_id": 43
+    },
+    {
+        "source": "mixamorig:RightUpLeg",
+        "target": "R_Hip",
+        "rsl_retargeting_bone_list_id": 44
+    },
+    {
+        "source": "mixamorig:RightLeg",
+        "target": "R_Knee",
+        "rsl_retargeting_bone_list_id": 45
+    },
+    {
+        "source": "mixamorig:RightFoot",
+        "target": "R_Ankle",
+        "rsl_retargeting_bone_list_id": 46
+    },
+    {
+        "source": "mixamorig:RightToeBase",
+        "target": "R_Toe",
+        "rsl_retargeting_bone_list_id": 47
+    },
+    {
+        "source": "mixamorig:LeftUpLeg",
+        "target": "L_Hip",
+        "rsl_retargeting_bone_list_id": 48
+    },
+    {
+        "source": "mixamorig:LeftLeg",
+        "target": "L_Knee",
+        "rsl_retargeting_bone_list_id": 49
+    },
+    {
+        "source": "mixamorig:LeftFoot",
+        "target": "L_Ankle",
+        "rsl_retargeting_bone_list_id": 50
+    },
+    {
+        "source": "mixamorig:LeftToeBase",
+        "target": "L_Toe",
+        "rsl_retargeting_bone_list_id": 51
+    }
+]

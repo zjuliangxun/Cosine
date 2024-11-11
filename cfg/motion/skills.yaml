@@ -46,7 +46,7 @@ vault:
   parkour-wall-hop.fbx
   parkour-webster.fbx
 
-Run:
+run:
   Running Jump.fbx
   Sprint.fbx
   Falling To Landing.fbx
@@ -54,14 +54,14 @@ Run:
   Jumping Down.fbx
   Sprinting Forward Roll.fbx
 
-Climb:
+climb:
   Sprint To Wall Climb.fbx
 
-Wall:
+wall:
   Diagonal Wall Run.fbx
   Wall Run.fbx
 
-Vault:
+vault:
   Jump Over.fbx
   Run And Swing.fbx
   parkour-cat-vault.fbx
@@ -70,11 +70,11 @@ enable_deform: false
 enable_scale: false
 
 skill_combinations:
-  - skills: [flip, vault, Run]
+  - skills: [flip, vault, run]
     fix_order: true
     weight: 0.5
     diffculty: 0.5
-  - skills: [flip, vault, Run, Climb, Wall]
+  - skills: [flip, vault, run, climb, wall]
     fix_order: true
     weight: 0.5
     diffculty: 0.5

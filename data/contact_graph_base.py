@@ -66,6 +66,10 @@ class CNode(DeviceMixin):
                 setattr(self, attr, tf.to_torch(value, device=device))
 
     @property
+    def order(self):
+        return self._order
+
+    @property
     def sustain_time(self):
         return self._sustain_time
 

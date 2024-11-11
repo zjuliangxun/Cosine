@@ -1,0 +1,92 @@
+{
+    "armature_name": "MJCF_Armature",
+    "bone_name_map": {
+        "Lhand": "L_Hand",
+        "Rhand": "R_Hand",
+        "Lfoot": "L_Ankle",
+        "Rfoot": "R_Ankle",
+        "Hip": "Pelvis"
+    },
+    "bone_id_map": {
+        "Pelvis": 0,
+        "L_Hip": 1,
+        "L_Knee": 2,
+        "L_Ankle": 3,
+        "L_Toe": 4,
+        "R_Hip": 5,
+        "R_Knee": 6,
+        "R_Ankle": 7,
+        "R_Toe": 8,
+        "Torso": 9,
+        "Spine": 10,
+        "Chest": 11,
+        "Neck": 12,
+        "Head": 13,
+        "L_Thorax": 14,
+        "L_Shoulder": 15,
+        "L_Elbow": 16,
+        "L_Wrist": 17,
+        "L_Hand": 18,
+        "R_Thorax": 19,
+        "R_Shoulder": 20,
+        "R_Elbow": 21,
+        "R_Wrist": 22,
+        "R_Hand": 23
+    },
+    "humanoid_file": "/home/lx/Gitprojects/Cosine/assets/smpl_phc/smpl_humanoid.fbx",
+    "motion_clip_file": "/home/lx/Gitprojects/Cosine/motion_clips/dataset_processed/motion/Running.fbx",
+    "output_file": "/home/lx/Gitprojects/Cosine/motion_clips/dataset_processed/contact_graph/Running.pkl",
+    "skill_name": "walk",
+    "1": {
+        "nodes": [
+            {
+                "id": 0,
+                "bone": "Rfoot",
+                "pos": [
+                    0.7760295867919922,
+                    -0.0570518895983696,
+                    0.00423818826675415
+                ]
+            }
+        ],
+        "edges": []
+    },
+    "18": {
+        "nodes": [
+            {
+                "id": 1,
+                "bone": "Lfoot",
+                "pos": [
+                    2.1184496879577637,
+                    0.054460298269987106,
+                    -0.004592098295688629
+                ]
+            }
+        ],
+        "edges": [
+            {
+                "start": 0,
+                "end": 1
+            }
+        ]
+    },
+    "40": {
+        "nodes": [
+            {
+                "id": 2,
+                "bone": "Rfoot",
+                "pos": [
+                    3.4810032844543457,
+                    -0.0656980574131012,
+                    -0.005279816687107086
+                ]
+            }
+        ],
+        "edges": [
+            {
+                "start": 1,
+                "end": 2
+            }
+        ]
+    }
+}

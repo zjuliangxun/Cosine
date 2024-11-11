@@ -1,0 +1,77 @@
+{
+    "armature_name": "MJCF_Armature",
+    "bone_name_map": {
+        "Lhand": "L_Hand",
+        "Rhand": "R_Hand",
+        "Lfoot": "L_Ankle",
+        "Rfoot": "R_Ankle",
+        "Hip": "Pelvis"
+    },
+    "bone_id_map": {
+        "Pelvis": 0,
+        "L_Hip": 1,
+        "L_Knee": 2,
+        "L_Ankle": 3,
+        "L_Toe": 4,
+        "R_Hip": 5,
+        "R_Knee": 6,
+        "R_Ankle": 7,
+        "R_Toe": 8,
+        "Torso": 9,
+        "Spine": 10,
+        "Chest": 11,
+        "Neck": 12,
+        "Head": 13,
+        "L_Thorax": 14,
+        "L_Shoulder": 15,
+        "L_Elbow": 16,
+        "L_Wrist": 17,
+        "L_Hand": 18,
+        "R_Thorax": 19,
+        "R_Shoulder": 20,
+        "R_Elbow": 21,
+        "R_Wrist": 22,
+        "R_Hand": 23
+    },
+    "humanoid_file": "/home/lx/Gitprojects/Cosine/assets/smpl_phc/smpl_humanoid.fbx",
+    "motion_clip_file": "/home/lx/Gitprojects/Cosine/motion_clips/dataset_processed/motion/Idle.fbx",
+    "output_file": "/home/lx/Gitprojects/Cosine/motion_clips/dataset_processed/contact_graph/Idle.pkl",
+    "skill_name": "idle",
+    "main_line": [
+        [
+            -0.2,
+            0,
+            0
+        ],
+        [
+            0.3,
+            0,
+            0
+        ]
+    ],
+    "1": {
+        "nodes": [
+            {
+                "id": 0,
+                "bone": "Rfoot",
+                "sustain_time": 20,
+                "pos": [
+                    0.11358024924993515,
+                    -0.11613944172859192,
+                    0.0016682222485542297
+                ]
+            },
+            {
+                "id": 1,
+                "bone": "Lfoot",
+                "sustain_time": 20,
+                "pos": [
+                    0.1332649141550064,
+                    0.1285771280527115,
+                    0.004725940525531769
+                ]
+            }
+        ],
+        "edges": []
+    }
+}

@@ -113,10 +113,7 @@ class Matplotlib2DPlotter(BasePlotter):
 
     def _set_lim(self):
         if not (
-            self._curr_x_min is None
-            or self._curr_x_max is None
-            or self._curr_y_min is None
-            or self._curr_y_max is None
+            self._curr_x_min is None or self._curr_x_max is None or self._curr_y_min is None or self._curr_y_max is None
         ):
             self._ax.set_xlim(self._curr_x_min, self._curr_x_max)
             self._ax.set_ylim(self._curr_y_min, self._curr_y_max)
@@ -212,13 +209,7 @@ class Matplotlib2DPlotter(BasePlotter):
             xmean = 0
             ymean = 0
 
-        plot_radius = max(
-            [
-                abs(lim - mean_)
-                for lims, mean_ in ((xlim, xmean), (ylim, ymean))
-                for lim in lims
-            ]
-        )
+        plot_radius = max([abs(lim - mean_) for lims, mean_ in ((xlim, xmean), (ylim, ymean)) for lim in lims])
 
         self._ax.set_xlim([xmean - plot_radius, xmean + plot_radius])
         self._ax.set_ylim([ymean - plot_radius, ymean + plot_radius])
@@ -233,7 +224,6 @@ class Matplotlib2DPlotter(BasePlotter):
 
 class Matplotlib3DPlotter(BasePlotter):
     _fig: plt.figure  # plt figure
-    _ax: p3.Axes3D  # plt 3d axis
     # stores artist objects for each task (task name as the key)
     _artist_cache: Dict[str, Any]
     # callables for each task primitives
@@ -244,6 +234,8 @@ class Matplotlib3DPlotter(BasePlotter):
         self._fig = plt.figure()
         # self._ax = p3.Axes3D(self._fig)
         self._ax = self._fig.add_subplot(111, projection="3d")
+        self._ax.set_xlabel("X Axis")
+        self._ax.set_ylabel("Y Axis")
         self._artist_cache = {}
 
         self._create_impl_callables = {
@@ -417,11 +409,7 @@ class Matplotlib3DPlotter(BasePlotter):
         zmean = np.mean(zlim)
 
         plot_radius = max(
-            [
-                abs(lim - mean_)
-                for lims, mean_ in ((xlim, xmean), (ylim, ymean), (zlim, zmean))
-                for lim in lims
-            ]
+            [abs(lim - mean_) for lims, mean_ in ((xlim, xmean), (ylim, ymean), (zlim, zmean)) for lim in lims]
         )
 
         self._ax.set_xlim3d([xmean - plot_radius, xmean + plot_radius])

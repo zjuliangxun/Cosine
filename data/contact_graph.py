@@ -4,10 +4,15 @@ import isaacgym.torch_utils as tf
 import torch
 from torch_geometric.data import Data
 
-from contact_graph_base import *
+from data.contact_graph_base import *
 
 
 class ContactGraph(ContactGraphBase):
+    """
+    Args:
+    nodes: a list of sorted CNodes
+    """
+
     def __init__(
         self,
         nodes,
@@ -15,23 +20,20 @@ class ContactGraph(ContactGraphBase):
         skill_name: str,
         use_edge_feat=False,
         directional=True,
-        main_direction=None,
+        main_line: List[float] = None,
         device="cpu",
     ):
         super().__init__(directional, device)
         self._has_deformed = False  # flag to rebuild feature
         self._max_edge_order = 0
         self._order2edgemap = {}
-        self._skill_name = skill_name
+        self._skill_name = skill_name.lower()
         self.use_edge_feat = use_edge_feat
         self._edge_feat_tensor = None
         self.set_coord(0, 0, 0, 0, 0, 0)
-        if main_direction is None:
-            # x-axis by default, up z todo
-            self._main_direction = torch.tensor([1, 0, 0], device=self.device)
-            # if len(self.nodes) >= 2: self._main_direction = self.nodes[-1].position - self.nodes[0].position # Assuming main direction is the vector from the first node to the last
-        else:
-            self._main_direction = main_direction
+        self._main_line = None
+        if main_line is not None:  # x-axis by default, up z (Do not support self-define up axis)
+            self._main_line = torch.tensor(main_line, device=self.device).view(2, 3)
 
         self.add_node(nodes)
         self.add_edge(edges)
@@ -46,10 +48,6 @@ class ContactGraph(ContactGraphBase):
     @property
     def skill_type(self):
         return self._skill_name
-
-    @property
-    def main_direction(self):
-        return tf.quat_apply(self._root_rotation, self._main_direction)
 
     @property
     def edge_index_tensor(self):
@@ -96,9 +94,16 @@ class ContactGraph(ContactGraphBase):
             raise ValueError
         return [self.edges[idx] for idx in self._order2edgemap[order]]
 
-    def get_main_line(self):  # TODO idle就不能这么搞
-        # random pickup a node from head/tail anchor
-        return torch.cat([self._head_anchors[0], self._tail_anchors[0]], dim=0, device=self.device)
+    def get_main_line(self):
+        # random pickup a node from head/tail anchor(idle motion's is assigned by hand)
+        if self._main_line is not None:
+            return self._main_line
+        id_st = list(self._head_anchors)[0]
+        id_end = list(self._tail_anchors)[0]
+        st = self.nodes[id_st].position
+        end = self.nodes[id_end].position
+        self._main_line = torch.cat([st, end], dim=0)
+        return self._main_line
 
     def deform(self):
         # first stretch the graph randomly alone x/y/z
@@ -110,6 +115,8 @@ class ContactGraph(ContactGraphBase):
         # secondly adjust some positions of cetain nodes, for better curriculum, we deform the height depend on skills
         if self.skill_type == "vault":
             pass  # TODO
+        elif self.skill_type == "walk":
+            pass
 
     def transform(self, q=None, t=None, scale=None):
         self._has_deformed = True
