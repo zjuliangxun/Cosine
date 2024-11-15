@@ -1,0 +1,10 @@
+motions:
+  - file: "dataset_processed/npy_motion/Idle.npy"
+    graph: "dataset_processed/contact_graph/Idle.pkl"
+    weight: 0.00724638
+  - file: "dataset_processed/npy_motion/Running.npy"
+    graph: "dataset_processed/contact_graph/Running.pkl"
+    weight: 0.00724638
+  - file: "dataset_processed/npy_motion/Standard Walk.npy"
+    graph: "dataset_processed/contact_graph/Standard Walk.pkl"
+    weight: 0.00724638

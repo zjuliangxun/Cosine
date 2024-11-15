@@ -21,17 +21,19 @@ env:
   numAMPObsSteps: 10
 
   localRootObs: False
-  keyBodies: ["right_hand", "left_hand", "right_foot", "left_foot"]
-  contactBodies: ["right_foot", "left_foot"]
+  keyBodies: ["R_Hand", "L_Hand", "R_Ankle", "L_Ankle"]
+  contactBodies: ["R_Hand", "L_Hand", "R_Ankle", "L_Ankle"]
   terminationHeight: 0.15
   enableEarlyTermination: True
   
   contact:
     reached_thresh: 0.3
   
+  motion_file: "motion_clips/walk2run_test.yaml"
+  
   asset:
-    assetRoot: "calm/data/assets"
-    assetFileName: "mjcf/amp_humanoid.xml"
+    assetRoot: "assets"
+    assetFileName: "smpl_phc/smpl_humanoid.xml"
 
   plane:
     staticFriction: 1.0

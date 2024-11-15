@@ -53,8 +53,7 @@ class HumanoidAMPBase(Humanoid):
 
         ############### moiton lib ################
         self._equal_motion_weights = cfg["env"].get("equal_motion_weights", False)
-        motion_file = cfg["env"]["motion_file"]
-        self._load_motion(motion_file)
+        self._load_motion(cfg)
 
         ############### amp realted buffers ################
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
@@ -188,7 +187,8 @@ class HumanoidAMPBase(Humanoid):
 
         return
 
-    def _load_motion(self, motion_file):
+    def _load_motion(self, cfg):
+        motion_file = cfg["env"]["motion_file"]
         assert self._dof_offsets[-1] == self.num_dof
         self._motion_lib = MotionLib(
             motion_file=motion_file,
