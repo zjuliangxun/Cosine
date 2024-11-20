@@ -1,7 +1,10 @@
-import time
+from time import time
+from omegaconf import OmegaConf
 from isaacgym import torch_utils, gymapi, gymutil
 from torch_geometric.data import Data, Batch
 import torch
+import numpy as np
+
 from data.skill_lib import SkillLib
 from data.contact_graph_base import CNode
 from sim.humanoid_amp import HumanoidAMPTask
@@ -14,13 +17,17 @@ class ParkourSingle(HumanoidAMPTask):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         self.terrain: TerrainParkour = None
         self._cg_nums = 0
+        # the environment.yaml
+        cfg = OmegaConf.structured(cfg)
 
         super().__init__(cfg, sim_params, physics_engine, device_type, device_id, headless)
         #################### init contact graph buffers #####################
         if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
             # 每个环境属于哪个grid
-            self.env_terrain_id = torch.randint(0, self.cfg.num_sub_terrains, (self.num_envs), device=self.device)
+            self.env_terrain_id = torch.randint(
+                0, self.cfg.terrain.num_sub_terrains, (self.num_envs,), device=self.device
+            )
             # 每个grid的所有cg数目和node数目
             self.terrain_cg_nums = torch.tensor([len(x) for x in graph_list], device=self.device, dtype=torch.long)
             self.grid_cg_ord_num = torch.tensor(
@@ -33,11 +40,11 @@ class ParkourSingle(HumanoidAMPTask):
                 device=self.device,
                 dtype=torch.long,
             )
-            self.env_skill_id = torch.tensor(
+            self.cg_skill_id = torch.tensor(
                 [self._motion_lib.get_skill_id(cg.skill_type) for cgs in graph_list for cg in cgs],
                 device=self.device,
                 dtype=torch.long,
-            )[self.env_terrain_id]
+            )
             # 初始化每个cg在大的图里的i位置
             grid_cg_offset, cnt = [], 0
             self._cg_rot_inv, self._cg_trans_inv = [], []
@@ -49,8 +56,8 @@ class ParkourSingle(HumanoidAMPTask):
                     self._cg_trans_inv.append(cg._root_translation)
             self.grid_cg_offset = torch.tensor(grid_cg_offset, device=self.device, dtype=torch.long)  # cumsum
             self._cg_rot_inv, self._cg_trans_inv = torch_utils.tf_inverse(
-                torch.cat(self._cg_rot_inv),
-                torch.cat(self._cg_trans_inv),
+                torch.cat(self._cg_rot_inv).view(-1, 4),
+                torch.cat(self._cg_trans_inv).view(-1, 3),
             )
             # put all the cgs into one PyG Batch object
             self.grid_cgs = Batch.from_data_list(
@@ -71,9 +78,10 @@ class ParkourSingle(HumanoidAMPTask):
             # num of frames contacting with the current goal
             self.goal_reach_time_buf = torch.zeros_like(self.progress_buf)
             self.goal_reached_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-            self.root_trans = torch.tensor(  # TODO need 刷新当环境改变，
-                [list(cgs[0].get_coord(), dim=-1) for cgs in graph_list]
-            )
+            self.root_trans = [torch.cat(list(cgs[0].get_coord()), dim=-1) for cgs in graph_list]
+            self.root_trans = torch.cat(self.root_trans, dim=0)  # TODO need 刷新当环境改变，
+
+            assert self._dof_offsets[-1] == self.num_dof
             return
 
     ############### parkour env creation methods ################
@@ -95,7 +103,7 @@ class ParkourSingle(HumanoidAMPTask):
         if mesh_type == "plane":
             super()._create_ground_plane()
         elif mesh_type in ["heightfield", "trimesh"]:
-            self.terrain = TerrainParkour(self.cfg.terrain, self.num_envs)
+            self.terrain = TerrainParkour(self.cfg["terrain"], self.num_envs)
             if mesh_type == "heightfield":
                 self._create_heightfield()
             elif mesh_type == "trimesh":
@@ -179,12 +187,12 @@ class ParkourSingle(HumanoidAMPTask):
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
 
-        env_grid_id = self.env_terrain_id[env_ids]
+        env_cg_id = self.get_env_cur_cg_id(env_ids)
         q, t = torch_utils.tf_combine(
-            self._cg_rot_inv[env_grid_id],
-            self._cg_trans_inv[env_grid_id],
-            self._rigid_body_pos[env_ids],
-            self._rigid_body_rot[env_ids],  # quat
+            self._cg_rot_inv[env_cg_id],
+            self._cg_trans_inv[env_cg_id],
+            self._humanoid_root_states[env_ids, 3:7],
+            self._humanoid_root_states[env_ids, 0:3],
         )
         delta_tf = torch.cat([q, t], dim=1)
 
@@ -194,7 +202,7 @@ class ParkourSingle(HumanoidAMPTask):
             expand_tf = torch.cat(
                 [delta_tf[i].unsqueeze(0).expand(node_counts[i], -1) for i in range(delta_tf.size(0))]
             )
-            batch.x = CNode.tf_apply_onfeat(expand_tf[0:4], expand_tf[4:], batch.x)
+            batch.x = CNode.tf_apply_onfeat(expand_tf[..., 0:4], expand_tf[..., 4:], batch.x)
             self.extras[key] = batch
 
         return
@@ -204,17 +212,20 @@ class ParkourSingle(HumanoidAMPTask):
         # NOTE maybe multiple reward works
         # NOTE 用不用-exp函数
         batch = self.extras["graph_obs"]
-        mask = batch.x[:, -1] == self.node_progress_buf
+        mask = batch.x[:, -1] == self.node_progress_buf[batch.batch]
         filtered_x = batch.x[mask]
+        skeleid = get_skeleton_id(filtered_x)  # BUG input data all left foots!
+        col_indices = (
+            (skeleid * 15 + 1).unsqueeze(1)
+            + torch.arange(3, device=skeleid.device).unsqueeze(0).repeat(skeleid.size(0), 1)
+        ).to(torch.long)
+        row_indices = torch.arange(skeleid.shape[0], device=skeleid.device)
         filtered_batch_id = batch.batch[mask]
-        skeleid = filtered_x[:, -2]
-        indices = (skeleid * 15 + 1).unsqueeze(1) + torch.arange(3).unsqueeze(0)
-        indices = indices.to(torch.long)
-        ske_state = self.obs_buf[filtered_batch_id][indices]
-        self.goal_reach_time_buf.set_(False)
+        ske_state = self.obs_buf[filtered_batch_id][row_indices[:, None], col_indices]
+        self.goal_reached_buf.fill_(False)
 
         # reward distance
-        d = torch.norm(ske_state[..., :3] - filtered_x[..., :3])
+        d = torch.norm(ske_state[..., :3] - filtered_x[..., :3], dim=-1)
         rd = torch.exp(-d + 1e-7)
         self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d > self.cfg.contact.reached_thresh, reduce="sum")
 
@@ -262,7 +273,7 @@ class ParkourSingle(HumanoidAMPTask):
 
     ############### draw task ################
     def _draw_task(self):
-        if self.cfg.vis_contacts:
+        if self.cfg.visualize.vis_contacts:
             self.gym.clear_lines(self.viewer)
 
             # draw contact goals

@@ -86,66 +86,75 @@ def set_seed(seed, torch_deterministic=False):
     return seed
 
 
+def parse_phys_eigen(physics_engine):
+    if physics_engine == "flex":
+        return gymapi.SIM_FLEX
+    elif physics_engine == "physx":
+        return gymapi.SIM_PHYSX
+    else:
+        raise ValueError("Invalid physics engine: {}".format(physics_engine))
+
+
 def parse_sim_params(cfg):
     # initialize sim
-    args = cfg.config
+    args = cfg["config"]
     sim_params = gymapi.SimParams()
     sim_params.dt = SIM_TIMESTEP
-    sim_params.num_client_threads = args.slices
+    sim_params.num_client_threads = args["slices"]
 
-    if args.physics_engine == gymapi.SIM_FLEX:
-        if args.device != "cpu":
+    if args["physics_engine"] == "flex":
+        if args["device"] != "cpu":
             print("WARNING: Using Flex with GPU instead of PHYSX!")
         sim_params.flex.shape_collision_margin = 0.01
         sim_params.flex.num_outer_iterations = 4
         sim_params.flex.num_inner_iterations = 10
-    elif args.physics_engine == gymapi.SIM_PHYSX:
+    elif args["physics_engine"] == "physx":
         sim_params.physx.solver_type = 1
         sim_params.physx.num_position_iterations = 4
         sim_params.physx.num_velocity_iterations = 0
         sim_params.physx.num_threads = 4
-        sim_params.physx.use_gpu = args.use_gpu
-        sim_params.physx.num_subscenes = args.subscenes
+        sim_params.physx.use_gpu = args["use_gpu"]
+        sim_params.physx.num_subscenes = args["subscenes"]
         sim_params.physx.max_gpu_contact_pairs = 8 * 1024 * 1024
 
-    sim_params.use_gpu_pipeline = args.use_gpu
-    sim_params.physx.use_gpu = args.use_gpu
+    sim_params.use_gpu_pipeline = args["use_gpu"]
+    sim_params.physx.use_gpu = args["use_gpu"]
 
     # if sim options are provided in cfg, parse them and update/override above:
-    if "sim" in cfg.environment:
-        gymutil.parse_sim_config(cfg.environment["sim"], sim_params)
+    if "sim" in cfg["environment"]:
+        gymutil.parse_sim_config(cfg["environment"]["sim"], sim_params)
 
     # Override num_threads if passed on the command line
-    if args.physics_engine == gymapi.SIM_PHYSX and args.num_threads > 0:
-        sim_params.physx.num_threads = args.num_threads
+    if args["physics_engine"] == "physx" and args["num_threads"] > 0:
+        sim_params.physx.num_threads = args["num_threads"]
 
     return sim_params
 
 
 from isaacgym import gymapi
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, SCMode
 
 
 def parse_config(cfg):
     if not OmegaConf.has_resolver("eval"):
         OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)
-
-    cfg.physics_engine = gymapi.SIM_PHYSX if cfg.physics_engine == "physx" else gymapi.SIM_FLEX
-
+    OmegaConf.set_struct(cfg, False)
+    rank = 0
     if cfg.config.multi_gpu:
         import horovod.torch as hvd
 
         rank = hvd.rank()
         print("Horovod rank: ", rank)
-    cfg.seed = cfg.seed + rank
+    cfg["seed"] = cfg["seed"] + rank
     cfg["device_type"] = "cuda"
     cfg["rank"] = rank
     cfg["rl_device"] = "cuda:" + str(rank)
 
-    cfg["name"] = cfg.environment.task
-    cfg["headless"] = cfg.config.headless
+    cfg["name"] = cfg["environment"]["task"]
+    cfg["headless"] = cfg["config"]["headless"]
     cfg["play"] = not cfg["train"]
+    cfg["config"]["num_actors"] = cfg["environment"]["env"]["numEnvs"]
 
     # Set physics domain randomization
     # if "task" in cfg:

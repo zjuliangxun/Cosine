@@ -1,0 +1,5 @@
+_target_: sim.strategy.reset.CgOriginResetStrategy
+state_init: "Default"
+hybrid_init_prob: 0.5
+# state_init: cfg["env"]["stateInit"],
+# hybrid_init_prob: cfg["env"]["hybridInitProb"],

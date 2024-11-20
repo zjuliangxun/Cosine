@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Attach to run_train.py",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/run_train.py",
+        "console": "integratedTerminal",
+        "args": [
+          "environment.env.numEnvs=4",
+          "config.task_name=test",
+          "environment.terrain.num_rows=2",
+          "environment.terrain.num_cols=2",
+          "config.minibatch_size=16",
+          "config.amp_batch_size=16",
+          "config.amp_minibatch_size=16"
+        ],
+        "env": {
+          "CUDA_VISIBLE_DEVICES": "0",
+          "CUDA_LAUNCH_BLOCKING": "1"
+        }
+      }
+    ]
+  }

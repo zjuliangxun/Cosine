@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 import torch
 import isaacgym.torch_utils as torch_utils
-from ..humanoid_amp import build_amp_observations
+from sim.jit_functions import build_amp_observations
 
 if TYPE_CHECKING:
     from ..humanoid_amp import HumanoidAMPBase
@@ -48,17 +48,12 @@ class AMPResetStrategy:
     def _reset_actors(self, env_ids):
         if self._state_init == self.StateInit.Default:
             self._reset_default(env_ids)
-        elif (
-            self._state_init == self.StateInit.Start
-            or self._state_init == self.StateInit.Random
-        ):
+        elif self._state_init == self.StateInit.Start or self._state_init == self.StateInit.Random:
             self._reset_ref_state_init(env_ids)
         elif self._state_init == self.StateInit.Hybrid:
             self._reset_hybrid_state_init(env_ids)
         else:
-            assert False, "Unsupported state initialization strategy: {:s}".format(
-                str(self._state_init)
-            )
+            assert False, "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
         return
 
     def _reset_default(self, env_ids):
@@ -72,22 +67,20 @@ class AMPResetStrategy:
     def _reset_ref_state_init(self, env_ids):
         ctx = self.ctx
         num_envs = env_ids.shape[0]
-        motion_ids = ctx._motion_lib.sample_motions(num_envs)
 
-        if (
-            self._state_init == self.StateInit.Random
-            or self._state_init == self.StateInit.Hybrid
-        ):
+        cur_cg_ids = ctx.get_env_cur_cg_id(env_ids)
+        motion_cats = ctx.cg_skill_id[cur_cg_ids]
+        motion_ids = ctx._motion_lib.sample_motions(num_envs, motion_cats)
+
+        if self._state_init == self.StateInit.Random or self._state_init == self.StateInit.Hybrid:
             motion_times = ctx._motion_lib.sample_time(motion_ids)
         elif self._state_init == self.StateInit.Start:
             motion_times = torch.zeros(num_envs, device=ctx.device)
         else:
-            assert False, "Unsupported state initialization strategy: {:s}".format(
-                str(self._state_init)
-            )
+            assert False, "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
 
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = (
-            ctx._motion_lib.get_motion_state(motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = ctx._motion_lib.get_motion_state(
+            motion_ids, motion_times
         )
 
         ctx._set_env_state(
@@ -108,9 +101,7 @@ class AMPResetStrategy:
     def _reset_hybrid_state_init(self, env_ids):
         ctx = self.ctx
         num_envs = env_ids.shape[0]
-        ref_probs = torch_utils.to_torch(
-            np.array([self._hybrid_init_prob] * num_envs), device=ctx.device
-        )
+        ref_probs = torch_utils.to_torch(np.array([self._hybrid_init_prob] * num_envs), device=ctx.device)
         ref_init_mask = torch.bernoulli(ref_probs) == 1.0
 
         ref_reset_ids = env_ids[ref_init_mask]
@@ -148,19 +139,15 @@ class AMPResetStrategy:
     def _init_amp_obs_ref(self, env_ids, motion_ids, motion_times):
         ctx = self.ctx
         dt = ctx.dt
-        motion_ids = torch.tile(
-            motion_ids.unsqueeze(-1), [1, ctx._num_amp_obs_steps - 1]
-        )
+        motion_ids = torch.tile(motion_ids.unsqueeze(-1), [1, ctx._num_amp_obs_steps - 1])
         motion_times = motion_times.unsqueeze(-1)
-        time_steps = -dt * (
-            torch.arange(0, ctx._num_amp_obs_steps - 1, device=ctx.device) + 1
-        )
+        time_steps = -dt * (torch.arange(0, ctx._num_amp_obs_steps - 1, device=ctx.device) + 1)
         motion_times = motion_times + time_steps
 
         motion_ids = motion_ids.view(-1)
         motion_times = motion_times.view(-1)
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = (
-            ctx._motion_lib.get_motion_state(motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = ctx._motion_lib.get_motion_state(
+            motion_ids, motion_times
         )
         amp_obs_demo = build_amp_observations(
             root_pos,
@@ -175,9 +162,7 @@ class AMPResetStrategy:
             ctx._dof_obs_size,
             ctx._dof_offsets,
         )
-        ctx._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(
-            ctx._hist_amp_obs_buf[env_ids].shape
-        )
+        ctx._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(ctx._hist_amp_obs_buf[env_ids].shape)
         return
 
 
@@ -197,7 +182,7 @@ start和hybrid: 其实都一样关键在于如何处理地形和速度变化后�
 class CgRSIResetStrategy(AMPResetStrategy):
     """Supports RSI when training single skill without deformation"""
 
-    def __init__(self, ctx: ParkourSingle, state_init: str, hybrid_init_prob: float):
+    def __init__(self, ctx, state_init: str, hybrid_init_prob: float):
         super().__init__(ctx, state_init, hybrid_init_prob)
         if TYPE_CHECKING:
             self.ctx: ParkourSingle = ctx
@@ -214,15 +199,11 @@ class CgRSIResetStrategy(AMPResetStrategy):
         if self._state_init == self.StateInit.Start:
             self.ctx.node_progress_buf[self._reset_ref_env_ids] = 0
         else:
-            self.ctx.node_progress_buf[self._reset_ref_env_ids] = (
-                self._reset_ref_node_order
-            )
+            self.ctx.node_progress_buf[self._reset_ref_env_ids] = self._reset_ref_node_order
 
     def _transform(self, root_pos, root_rot, root_vel, root_ang_vel):
         ctx = self.ctx
-        root_pos = torch_utils.tf_apply(
-            ctx.root_trans[:, 0:4], ctx.root_trans[:, 4:], root_pos
-        )
+        root_pos = torch_utils.tf_apply(ctx.root_trans[:, 0:4], ctx.root_trans[:, 4:], root_pos)
         root_rot = torch_utils.tf_apply(q=ctx.root_trans[:, 0:4], v=root_rot)
         root_vel = torch_utils.tf_apply(q=ctx.root_trans[:, 0:4], v=root_vel)
         root_ang_vel = torch_utils.tf_apply(q=ctx.root_trans[:, 0:4], v=root_ang_vel)
@@ -233,13 +214,10 @@ class CgRSIResetStrategy(AMPResetStrategy):
         ctx = self.ctx
         num_envs = env_ids.shape[0]
         cur_cg_ids = ctx.get_env_cur_cg_id(env_ids)
-        motion_cats = ctx.env_skill_id[cur_cg_ids]
+        motion_cats = ctx.cg_skill_id[cur_cg_ids]
         motion_ids = ctx._motion_lib.sample_motions(num_envs, motion_cats)
 
-        if (
-            self._state_init == self.StateInit.Random
-            or self._state_init == self.StateInit.Hybrid
-        ):
+        if self._state_init == self.StateInit.Random or self._state_init == self.StateInit.Hybrid:
             # randomly sample the cg's node rather than the time.
             rand_order = torch.rand_like(env_ids) * self.ctx.grid_cg_ord_num[cur_cg_ids]
             rand_order = torch.floor(rand_order).long()
@@ -249,17 +227,13 @@ class CgRSIResetStrategy(AMPResetStrategy):
         elif self._state_init == self.StateInit.Start:
             motion_times = torch.zeros(num_envs, device=ctx.device)
         else:
-            assert False, "Unsupported state initialization strategy: {:s}".format(
-                str(self._state_init)
-            )
+            assert False, "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
 
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = (
-            ctx._motion_lib.get_motion_state(motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = ctx._motion_lib.get_motion_state(
+            motion_ids, motion_times
         )
 
-        root_pos, root_rot, root_vel, root_ang_vel = self._transform(
-            root_pos, root_rot, root_vel, root_ang_vel
-        )
+        root_pos, root_rot, root_vel, root_ang_vel = self._transform(root_pos, root_rot, root_vel, root_ang_vel)
 
         ctx._set_env_state(
             env_ids=env_ids,
@@ -279,24 +253,18 @@ class CgRSIResetStrategy(AMPResetStrategy):
     def _init_amp_obs_ref(self, env_ids, motion_ids, motion_times):
         ctx = self.ctx
         dt = ctx.dt
-        motion_ids = torch.tile(
-            motion_ids.unsqueeze(-1), [1, ctx._num_amp_obs_steps - 1]
-        )
+        motion_ids = torch.tile(motion_ids.unsqueeze(-1), [1, ctx._num_amp_obs_steps - 1])
         motion_times = motion_times.unsqueeze(-1)
-        time_steps = -dt * (
-            torch.arange(0, ctx._num_amp_obs_steps - 1, device=ctx.device) + 1
-        )
+        time_steps = -dt * (torch.arange(0, ctx._num_amp_obs_steps - 1, device=ctx.device) + 1)
         motion_times = motion_times + time_steps
 
         motion_ids = motion_ids.view(-1)
         motion_times = motion_times.view(-1)
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = (
-            ctx._motion_lib.get_motion_state(motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = ctx._motion_lib.get_motion_state(
+            motion_ids, motion_times
         )
 
-        root_pos, root_rot, root_vel, root_ang_vel = self._transform(
-            root_pos, root_rot, root_vel, root_ang_vel
-        )
+        root_pos, root_rot, root_vel, root_ang_vel = self._transform(root_pos, root_rot, root_vel, root_ang_vel)
 
         amp_obs_demo = build_amp_observations(
             root_pos,
@@ -311,9 +279,7 @@ class CgRSIResetStrategy(AMPResetStrategy):
             ctx._dof_obs_size,
             ctx._dof_offsets,
         )
-        ctx._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(
-            ctx._hist_amp_obs_buf[env_ids].shape
-        )
+        ctx._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(ctx._hist_amp_obs_buf[env_ids].shape)
         return
 
 
@@ -323,7 +289,7 @@ class CgOriginResetStrategy(AMPResetStrategy):
     Init the pose using the default one at cg's origin.
     """
 
-    def __init__(self, ctx: ParkourSingle, state_init: str, hybrid_init_prob: float):
+    def __init__(self, ctx, state_init: str, hybrid_init_prob: float):
         super().__init__(ctx, state_init, hybrid_init_prob)
         # TODO actor 要设置静止姿势
         # TODO 放在cg图的原点： Pose 确保cg图的原点也是env的原点就行
@@ -332,9 +298,7 @@ class CgOriginResetStrategy(AMPResetStrategy):
         if self._state_init == self.StateInit.Default:
             self._reset_default(env_ids)
         else:
-            assert False, "Unsupported state initialization strategy: {:s}".format(
-                str(self._state_init)
-            )
+            assert False, "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
         return
 
     def reset_env(self, env_ids):
@@ -377,7 +341,7 @@ class CgOriginResetStrategy(AMPResetStrategy):
 #     def _reset_ref_state_init(self, env_ids):
 #         ctx = self.ctx
 #         num_envs = env_ids.shape[0]
-#         motion_cats = ctx.env_skill_id[env_ids]
+#         motion_cats = ctx.cg_skill_id[env_ids]
 #         motion_ids = ctx._motion_lib.sample_motions(num_envs, motion_cats)
 
 #         if (

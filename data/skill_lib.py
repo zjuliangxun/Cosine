@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, overload
 import os
 import yaml
 import random, copy
@@ -38,10 +38,9 @@ class LoadedMotionsCG(LoadedMotions):
             motion_dt,
             motion_num_frames,
             motion_files,
-            motion_weights_byskill,
         )
         self.motion_cgs = motion_cgs
-        self.register_buffer("motion_weights", motion_weights_byskill, persistent=False)
+        self.register_buffer("motion_weights_byskill", motion_weights_byskill, persistent=False)
 
 
 class SkillLib(MotionLib):
@@ -87,7 +86,7 @@ class SkillLib(MotionLib):
                 curr_file = os.path.join(dir_name, curr_file)
                 motion_weights.append(curr_weight)
                 motion_files.append(curr_file)
-                graph_files.append(curr_graph)
+                graph_files.append(os.path.join(dir_name, curr_graph))
         else:
             raise ValueError("Unsupported motion file format. Use YAML.")
 
@@ -105,17 +104,11 @@ class SkillLib(MotionLib):
 
         total_len = 0.0
 
-        motion_files, graph_files, motion_weights = self._fetch_motion_files(
-            motion_file
-        )
+        motion_files, graph_files, motion_weights = self._fetch_motion_files(motion_file)
         num_motion_files = len(motion_files)
         for f in range(num_motion_files):
             curr_file = motion_files[f]
-            print(
-                "Loading {:d}/{:d} motion files: {:s}".format(
-                    f + 1, num_motion_files, curr_file
-                )
-            )
+            print("Loading {:d}/{:d} motion files: {:s}".format(f + 1, num_motion_files, curr_file))
             curr_motion: SkeletonMotion = SkeletonMotion.from_file(curr_file)
             curr_cg: ContactGraph = ContactGraph.from_file(graph_files[f])
 
@@ -136,16 +129,14 @@ class SkillLib(MotionLib):
 
             # Moving motion tensors to the GPU
             if USE_CACHE:
-                curr_cg = curr_cg.to(self._device)
+                curr_cg.to(self._device)
                 curr_motion = DeviceCache(curr_motion, self._device)
             else:
                 curr_motion.tensor = curr_motion.tensor.to(self._device)
-                curr_cg = curr_cg.to(self._device)
-                curr_motion._skeleton_tree._parent_indices = (
-                    curr_motion._skeleton_tree._parent_indices.to(self._device)
-                )
-                curr_motion._skeleton_tree._local_translation = (
-                    curr_motion._skeleton_tree._local_translation.to(self._device)
+                curr_cg.to(self._device)
+                curr_motion._skeleton_tree._parent_indices = curr_motion._skeleton_tree._parent_indices.to(self._device)
+                curr_motion._skeleton_tree._local_translation = curr_motion._skeleton_tree._local_translation.to(
+                    self._device
                 )
                 curr_motion._rotation = curr_motion._rotation.to(self._device)
 
@@ -162,25 +153,15 @@ class SkillLib(MotionLib):
             self._motion_files.append(curr_file)
 
         self._skill_nums = len(self._skill_categories)
-        self._max_skill_len = max(len(lst) for lst in self._skill_categories.values)
+        self._max_skill_len = max(len(lst) for lst in self._skill_categories.values())
 
-        self._motion_lengths = torch.tensor(
-            self._motion_lengths, device=self._device, dtype=torch.float32
-        )
+        self._motion_lengths = torch.tensor(self._motion_lengths, device=self._device, dtype=torch.float32)
 
-        self._motion_weights = torch.tensor(
-            self._motion_weights, dtype=torch.float32, device=self._device
-        )
+        self._motion_weights = torch.tensor(self._motion_weights, dtype=torch.float32, device=self._device)
 
-        self._motion_fps = torch.tensor(
-            self._motion_fps, device=self._device, dtype=torch.float32
-        )
-        self._motion_dt = torch.tensor(
-            self._motion_dt, device=self._device, dtype=torch.float32
-        )
-        self._motion_num_frames = torch.tensor(
-            self._motion_num_frames, device=self._device
-        )
+        self._motion_fps = torch.tensor(self._motion_fps, device=self._device, dtype=torch.float32)
+        self._motion_dt = torch.tensor(self._motion_dt, device=self._device, dtype=torch.float32)
+        self._motion_num_frames = torch.tensor(self._motion_num_frames, device=self._device)
 
         indices = torch.full(
             (len(self._skill_categories), self._max_skill_len),
@@ -188,8 +169,11 @@ class SkillLib(MotionLib):
             dtype=torch.long,
             device=self._device,
         )
-        for i, se in enumerate(self._skill_categories):
+
+        self._skillname2id = {}
+        for i, (name, se) in enumerate(self._skill_categories.items()):
             indices[i, : len(se)] = torch.tensor(list(se), dtype=torch.long)
+            self._skillname2id[name] = i
 
         self._motion_weights_byskill = torch.where(
             indices >= 0,
@@ -197,7 +181,7 @@ class SkillLib(MotionLib):
             torch.zeros_like(indices, dtype=torch.float32),
         )
         self._motion_weights /= self._motion_weights.sum()
-        self._motion_weights_byskill /= self._motion_weights_byskill.sum(dim=1)
+        self._motion_weights_byskill /= self._motion_weights_byskill.sum(dim=1).unsqueeze(1)
 
         self.state = LoadedMotionsCG(
             motions=tuple(self._motions),
@@ -211,28 +195,23 @@ class SkillLib(MotionLib):
             motion_weights_byskill=self._motion_weights_byskill,
         )
         # the node of order 1 represents the time (0, first contact)
-        self._skill_order_time_map = Batch.from_data_list(
-            [Data(x=cg.order_time_range()) for cg in self._motion_cgs]
-        )
+        self._skill_order_time_map = Batch.from_data_list([Data(x=cg.order_time_range) for cg in self._motion_cgs])
 
         num_motions = self.num_motions()
         total_len = self.get_total_length()
 
-        print(
-            "Loaded {:d} motions with a total length of {:.3f}s.".format(
-                num_motions, total_len
-            )
-        )
+        print("Loaded {:d} motions with a total length of {:.3f}s.".format(num_motions, total_len))
 
         return motion_files
 
     def sample_motions(self, n, motion_cats):
+        assert n == motion_cats.shape[0]
         motion_ids = torch.multinomial(
             self.state.motion_weights_byskill[motion_cats],
-            num_samples=n,
+            num_samples=1,
             replacement=True,
         )
-        return motion_ids
+        return motion_ids.view(-1)
 
     def sample_time(self, motion_ids, truncate_time=None, phase=None):
         if phase is None:
@@ -248,18 +227,12 @@ class SkillLib(MotionLib):
         return motion_time
 
     def sample_time_byorder(self, motion_ids, rand_order):
-        motion_order_time_map = Batch.from_data_list(
-            self._skill_order_time_map.index_select(motion_ids)
-        )
+        motion_order_time_map = Batch.from_data_list(self._skill_order_time_map.index_select(motion_ids))
         num_nodes_per_graph = torch.bincount(motion_order_time_map.batch)
-        cumsum_nodes = torch.cumsum(
-            torch.cat([torch.tensor([0]), num_nodes_per_graph]), dim=0
-        )
+        cumsum_nodes = torch.cumsum(torch.cat([torch.tensor([0]), num_nodes_per_graph]), dim=0)
         selected_node_indices = cumsum_nodes[:-1] + rand_order
         prob = motion_order_time_map.x[selected_node_indices]
-        motion_time = (
-            torch.rand_like(rand_order) / (prob[:, 1:] - prob[:, :0]) + prob[:, :0]
-        )
+        motion_time = torch.rand_like(rand_order) / (prob[:, 1:] - prob[:, :0]) + prob[:, :0]
         return motion_time
 
     def get_cg_by_skill(self, skill_name) -> ContactGraph:
@@ -270,7 +243,4 @@ class SkillLib(MotionLib):
             raise ValueError("Skill name not found in the skill library")
 
     def get_skill_id(self, skill_name):
-        if skill_name in self._skill_categories:
-            return self._skill_categories[skill_name]
-        else:
-            raise ValueError("Skill name not found in the skill library")
+        return self._skillname2id[skill_name]

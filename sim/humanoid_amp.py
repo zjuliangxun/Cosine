@@ -29,15 +29,14 @@
 from enum import Enum
 import numpy as np
 import time
-from isaacgym.torch_utils import *
 import torch
 import hydra
 
-from utils import torch_utils
 from data.motion_lib import MotionLib
-from sim.humanoid import Humanoid, dof_to_obs
+from sim.humanoid import Humanoid
 from sim.strategy.reset import AMPResetStrategy
 from sim.strategy.early_term import TerminateByHeight
+from sim.jit_functions import build_amp_observations
 
 
 class HumanoidAMPBase(Humanoid):
@@ -69,7 +68,7 @@ class HumanoidAMPBase(Humanoid):
         self._hist_amp_obs_buf = self._amp_obs_buf[:, 1:]
 
         self.reset_strategy: AMPResetStrategy = hydra.utils.instantiate(cfg.reset, ctx=self)
-        self.terminate_strategy: TerminateByHeight = hydra.utils.instantiate(cfg.terminate, ctx=self)
+        self.terminate_strategy: TerminateByHeight = hydra.utils.instantiate(cfg.termination, ctx=self)
 
         return
 
@@ -180,6 +179,11 @@ class HumanoidAMPBase(Humanoid):
         elif asset_file == "mjcf/amp_humanoid_sword_shield.xml":
             self._num_amp_obs_per_step = (
                 13 + self._dof_obs_size + 31 + 3 * num_key_bodies
+            )  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+
+        elif asset_file == "smpl_phc/smpl_humanoid.xml":
+            self._num_amp_obs_per_step = (
+                13 + self._dof_obs_size + 69 + 3 * num_key_bodies
             )  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
         else:
             print("Unsupported character config file: {s}".format(asset_file))
@@ -331,75 +335,3 @@ class HumanoidAMPTask(HumanoidAMPBase):
 
     def _draw_task(self):
         return
-
-
-#####################################################################
-###=========================jit functions=========================###
-#####################################################################
-
-
-@torch.jit.script
-def build_amp_observations(
-    root_pos,
-    root_rot,
-    root_vel,
-    root_ang_vel,
-    dof_pos,
-    dof_vel,
-    key_body_pos,
-    local_root_obs,
-    root_height_obs,
-    dof_obs_size,
-    dof_offsets,
-):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, int, List[int]) -> Tensor
-    root_h = root_pos[:, 2:3]
-    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)
-
-    if local_root_obs:
-        root_rot_obs = quat_mul(heading_rot, root_rot)
-    else:
-        root_rot_obs = root_rot
-    root_rot_obs = torch_utils.quat_to_tan_norm(root_rot_obs)
-
-    if not root_height_obs:
-        root_h_obs = torch.zeros_like(root_h)
-    else:
-        root_h_obs = root_h
-
-    local_root_vel = quat_rotate(heading_rot, root_vel)
-    local_root_ang_vel = quat_rotate(heading_rot, root_ang_vel)
-
-    root_pos_expand = root_pos.unsqueeze(-2)
-    local_key_body_pos = key_body_pos - root_pos_expand
-
-    heading_rot_expand = heading_rot.unsqueeze(-2)
-    heading_rot_expand = heading_rot_expand.repeat((1, local_key_body_pos.shape[1], 1))
-    flat_end_pos = local_key_body_pos.view(
-        local_key_body_pos.shape[0] * local_key_body_pos.shape[1],
-        local_key_body_pos.shape[2],
-    )
-    flat_heading_rot = heading_rot_expand.view(
-        heading_rot_expand.shape[0] * heading_rot_expand.shape[1],
-        heading_rot_expand.shape[2],
-    )
-    local_end_pos = quat_rotate(flat_heading_rot, flat_end_pos)
-    flat_local_key_pos = local_end_pos.view(
-        local_key_body_pos.shape[0],
-        local_key_body_pos.shape[1] * local_key_body_pos.shape[2],
-    )
-
-    dof_obs = dof_to_obs(dof_pos, dof_obs_size, dof_offsets)
-    obs = torch.cat(
-        (
-            root_h_obs,
-            root_rot_obs,
-            local_root_vel,
-            local_root_ang_vel,
-            dof_obs,
-            dof_vel,
-            flat_local_key_pos,
-        ),
-        dim=-1,
-    )
-    return obs

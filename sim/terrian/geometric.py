@@ -2,15 +2,13 @@ import cv2
 import numpy as np
 
 
-def draw_rectangle_(src, tar, angle=0, translation=np.array([0, 0])):
+def draw_rectangle_(src, tar, angle: float = 0, translation=np.array([0, 0])):
     # src = np.random.randint(0, 256, (50, 100), dtype=np.uint8)
     # tar = np.zeros((tar_height, tar_width), dtype=np.uint8)
 
     tar_height, tar_width = tar.shape
 
-    translation = -np.array([0, tar_height]) + (
-        translation + np.array([0, src.shape[0]])
-    )
+    translation = -np.array([0, tar_height]) + (translation + np.array([0, src.shape[0]]))
     tx, ty = translation[0].item(), -translation[1].item()
 
     # Get the center of rotation, usually the center of src
@@ -23,9 +21,7 @@ def draw_rectangle_(src, tar, angle=0, translation=np.array([0, 0])):
     # Apply the transformation and place the result into tar
     # The output size is set to tar's dimensions to automatically handle clipping
     borderValue = 1000
-    result = cv2.warpAffine(
-        src, rotation_matrix, (tar_width, tar_height), borderValue=borderValue
-    )
+    result = cv2.warpAffine(src, rotation_matrix, (tar_width, tar_height), borderValue=borderValue)
     # tar = np.maximum(tar, result)
     tar[result != borderValue] = result[result != borderValue]
 

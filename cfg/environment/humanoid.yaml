@@ -1,19 +1,24 @@
 defaults:
   - _self_
   - terrain: terrain.yaml
-  - reset: amp_reset.yaml
-  - terminate: term_by_height.yaml
+  - reset: cg_origin_reset.yaml
+  - termination: term_by_contact.yaml
 
 # if given, will override the device setting in gym. 
 task: ParkourSingle
 visualize: 
   vis_contacts: True
+
+contact:
+  reached_thresh: 0.3
+
 env: 
   numEnvs: 4096
   envSpacing: 5
   episodeLength: 300
   isFlagrun: False
   enableDebugVis: False
+  enableTaskObs: False
   
   pdControl: True
   powerScale: 1.0
@@ -25,9 +30,6 @@ env:
   contactBodies: ["R_Hand", "L_Hand", "R_Ankle", "L_Ankle"]
   terminationHeight: 0.15
   enableEarlyTermination: True
-  
-  contact:
-    reached_thresh: 0.3
   
   motion_file: "motion_clips/walk2run_test.yaml"
   

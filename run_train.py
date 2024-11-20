@@ -1,13 +1,15 @@
 import monkey_patch
 import torch
-import numpy
+import numpy as np
 import hydra
 import pyrootutils
 from omegaconf import DictConfig
 from setproctitle import setproctitle
 import utils.config
+from omegaconf import OmegaConf
+
 import utils.logger
-from utils.config import set_np_formatting, set_seed, parse_sim_params
+from utils.config import set_np_formatting, set_seed, parse_sim_params, parse_phys_eigen
 
 from rl_games.algos_torch import torch_ext
 from rl_games.common import env_configurations, vecenv
@@ -72,32 +74,32 @@ cfg_raw = None
 
 def create_rlgpu_env(**kwargs):
 
-    if cfg_complete.config.use_gpu:
+    if cfg_complete["config"]["use_gpu"]:
         device_type = "cuda"
     else:
         device_type = "cpu"
-    device_id = cfg_complete.rank
+    device_id = cfg_complete["rank"]
     sim_params = parse_sim_params(cfg_complete)
 
-    cfg_complete.environment.env["seed"] = cfg_complete["seed"]
+    cfg_complete["environment"]["env"]["seed"] = cfg_complete["seed"]
     try:
-        task = eval(cfg_complete.environment.task)(
-            cfg=cfg_complete.environment,
+        task = eval(cfg_complete["environment"]["task"])(
+            cfg=cfg_complete["environment"],
             sim_params=sim_params,
-            physics_engine=cfg_complete.config.physics_engine,
+            physics_engine=parse_phys_eigen(cfg_complete["config"]["physics_engine"]),
             device_type=device_type,
             device_id=device_id,
-            headless=cfg_complete.config.headless,
+            headless=cfg_complete["config"]["headless"],
         )
     except NameError as e:
         print(e)
 
-    rl_device = "cuda:" + str(device_id) if cfg_complete.config.use_gpu else "cpu"
+    rl_device = "cuda:" + str(device_id) if cfg_complete["config"]["use_gpu"] else "cpu"
     env = VecTaskPythonWrapper(
         task,
         rl_device,
-        cfg_complete.config.get("clip_observations", np.inf),
-        cfg_complete.config.get("clip_actions", 1.0),
+        cfg_complete["config"].get("clip_observations", np.inf),
+        cfg_complete["config"].get("clip_actions", 1.0),
     )
 
     print("num_envs: {:d}".format(env.num_envs))
@@ -194,12 +196,12 @@ def build_alg_runner(algo_observer):
     return runner
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+@hydra.main(version_base="1.3", config_path="./cfg", config_name="train.yaml")
 def main(cfg: DictConfig):
     global cfg_complete
     utils.config.parse_config(cfg)
     set_np_formatting()
-    setproctitle(cfg.task_name)
+    setproctitle(cfg["config"]["task_name"])
     set_seed(cfg.get("seed", -1), cfg.get("torch_deterministic", False))
 
     # if args.motion_file:
@@ -221,11 +223,11 @@ def main(cfg: DictConfig):
     #         name=run_name,
     #     )
 
-    cfg_complete = cfg
+    cfg_complete = OmegaConf.to_container(cfg, resolve=True)
     algo_observer = RLGPUAlgoObserver()
 
     runner = build_alg_runner(algo_observer)
-    runner.load({"params": cfg})
+    runner.load({"params": cfg_complete})
     runner.reset()
     runner.run(cfg)
 

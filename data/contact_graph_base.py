@@ -24,6 +24,8 @@ class DeviceMixin:
     @property
     def device(self):
         device = self._device
+        if isinstance(device, str):
+            return device
         if device.type == "cuda" and device.index is None:
             return torch.device(f"cuda:{torch.cuda.current_device()}")
         return device
@@ -100,7 +102,8 @@ class CNode(DeviceMixin):
                 tf.tf_apply(q, t, feat[..., 0:3]),
                 tf.quat_apply(q, feat[..., 3:6]),
                 feat[..., 6:],
-            ]
+            ],
+            dim=1,
         )
 
     def node_feature(self):
@@ -108,7 +111,7 @@ class CNode(DeviceMixin):
             [
                 self._position,
                 self.normal,
-                torch.tensor([self.skeleton_id.value, self._order], device=self._position.device),
+                torch.tensor([self.skeleton_id, self._order], device=self._position.device),
             ]
         )
 

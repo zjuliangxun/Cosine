@@ -2,7 +2,6 @@ from typing import Any, TYPE_CHECKING
 from enum import Enum
 import numpy as np
 import torch
-from isaacgym.torch_utils import to_torch
 
 if TYPE_CHECKING:
     from ..humanoid import Humanoid
@@ -73,8 +72,10 @@ def compute_humanoid_reset(
 
 
 class TerminateByContact(TerminateByHeight):
-    def __init__(self, ctx: ParkourSingle, time_out_thresh: int = 120):
+    def __init__(self, ctx, time_out_thresh: int = 120):
         super().__init__(ctx)
+        if TYPE_CHECKING:
+            self.ctx: ParkourSingle
         self.time_out_thresh = time_out_thresh  # int(4 / ctx.dt)
 
     def compute_reset(self):
@@ -141,7 +142,7 @@ def compute_humanoid_reset_cg(
     has_done = torch.logical_and(
         progress_buf >= max_episode_length - 1,
         # all the cgs in a grid has been traversed
-        cg_progress_buf > max_cg_num_buf,
+        cg_progress_buf >= max_cg_num_buf,
     )
     reset = torch.where(has_done, torch.ones_like(progress_buf), terminated)
 

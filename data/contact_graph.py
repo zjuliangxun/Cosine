@@ -54,9 +54,11 @@ class ContactGraph(ContactGraphBase):
         return self._edge_feat_tensor
 
     def set_coord(self, x, y, z, yaw, pitch, roll):
-        self._root_rotation = tf.quat_from_euler_xyz(torch.tensor(yaw), torch.tensor(pitch), torch.tensor(roll)).to(
-            self.device
-        )
+        yaw = yaw if isinstance(yaw, torch.Tensor) else torch.tensor(yaw)
+        pitch = pitch if isinstance(pitch, torch.Tensor) else torch.tensor(pitch)
+        roll = roll if isinstance(roll, torch.Tensor) else torch.tensor(roll)
+
+        self._root_rotation = tf.quat_from_euler_xyz(yaw, pitch, roll).to(self.device)
         self._root_translation = torch.tensor([x, y, z], device=self.device)
 
     def build_adj_matrix(self):
@@ -77,14 +79,14 @@ class ContactGraph(ContactGraphBase):
         ).reshape(2, -1)
 
     def get_feat_tensor(self, device="cpu"):
-        if self._has_deformed:
+        if self._has_deformed or (self._node_feat_tensor is None):
             self._has_deformed = not self._has_deformed
-            self._node_feat_tensor = torch.stack([node.node_feature() for node in self.nodes], device=device)
+            self._node_feat_tensor = torch.stack([node.node_feature() for node in self.nodes])
             if self.use_edge_feat:
                 edge_list = [(edge.start_node, edge.end_node) for edge in self.edges]
                 self._edge_feat_tensor = torch.tensor(edge_list, dtype=torch.long, device=device)
         # TODO check if need reverse
-        ret = tuple(CNode.tf_apply_onfeat(self._root_rotation, self._root_translation, self._node_feat_tensor))
+        ret = CNode.tf_apply_onfeat(self._root_rotation, self._root_translation, self._node_feat_tensor)
         if self.use_edge_feat:
             ret += tuple(self._edge_feat_tensor)
         return ret
@@ -102,7 +104,7 @@ class ContactGraph(ContactGraphBase):
         id_end = list(self._tail_anchors)[0]
         st = self.nodes[id_st].position
         end = self.nodes[id_end].position
-        self._main_line = torch.cat([st, end], dim=0)
+        self._main_line = torch.cat([st, end], dim=0).view(-1, 3)
         return self._main_line
 
     def deform(self):

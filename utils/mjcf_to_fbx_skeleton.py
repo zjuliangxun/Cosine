@@ -40,6 +40,8 @@ class Body:
         geom_info = body_elem.findall("geom")
         if len(geom_info) == 0:
             return
+        joint_info = body_elem.findall("joint")
+        self.joint_nums = len(joint_info)
         assert len(geom_info) <= 1, f"Multiple geoms found for body {body_elem.get('name')}"
         ge = geom_info[0]
         self.geom_type = ge.get("type")
@@ -67,7 +69,7 @@ class Body:
         return len(self.children) == 0
 
     def print(self, cnt=0):
-        print(f"{self.name}: {cnt}")
+        print(f"{self.name}: {cnt} ({self.joint_nums} dof)")
         cnt += 1
         for child in self.children:
             cnt = child.print(cnt)

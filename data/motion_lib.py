@@ -170,59 +170,43 @@ class MotionLib(DeviceDtypeModuleMixin):
         motions = self.state.motions
         self.register_buffer(
             "gts",
-            torch.cat([m.global_translation for m in motions], dim=0).to(
-                dtype=torch.float32
-            ),
+            torch.cat([m.global_translation for m in motions], dim=0).to(dtype=torch.float32),
             persistent=False,
         )
         self.register_buffer(
             "grs",
-            torch.cat([m.global_rotation for m in motions], dim=0).to(
-                dtype=torch.float32
-            ),
+            torch.cat([m.global_rotation for m in motions], dim=0).to(dtype=torch.float32),
             persistent=False,
         )
         self.register_buffer(
             "lrs",
-            torch.cat([m.local_rotation for m in motions], dim=0).to(
-                dtype=torch.float32
-            ),
+            torch.cat([m.local_rotation for m in motions], dim=0).to(dtype=torch.float32),
             persistent=False,
         )
         self.register_buffer(
             "grvs",
-            torch.cat([m.global_root_velocity for m in motions], dim=0).to(
-                dtype=torch.float32
-            ),
+            torch.cat([m.global_root_velocity for m in motions], dim=0).to(dtype=torch.float32),
             persistent=False,
         )
         self.register_buffer(
             "gravs",
-            torch.cat([m.global_root_angular_velocity for m in motions], dim=0).to(
-                dtype=torch.float32
-            ),
+            torch.cat([m.global_root_angular_velocity for m in motions], dim=0).to(dtype=torch.float32),
             persistent=False,
         )
         self.register_buffer(
             "dvs",
-            torch.cat([m.dof_vels for m in motions], dim=0).to(
-                device=device, dtype=torch.float32
-            ),
+            torch.cat([m.dof_vels for m in motions], dim=0).to(device=device, dtype=torch.float32),
             persistent=False,
         )
 
         lengths = self.state.motion_num_frames
         lengths_shifted = lengths.roll(1)
         lengths_shifted[0] = 0
-        self.register_buffer(
-            "length_starts", lengths_shifted.cumsum(0), persistent=False
-        )
+        self.register_buffer("length_starts", lengths_shifted.cumsum(0), persistent=False)
 
         self.register_buffer(
             "motion_ids",
-            torch.arange(
-                len(self.state.motions), dtype=torch.long, device=self._device
-            ),
+            torch.arange(len(self.state.motions), dtype=torch.long, device=self._device),
             persistent=False,
         )
 
@@ -238,9 +222,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         return self.state.motions[motion_id]
 
     def sample_motions(self, n):
-        motion_ids = torch.multinomial(
-            self.state.motion_weights, num_samples=n, replacement=True
-        )
+        motion_ids = torch.multinomial(self.state.motion_weights, num_samples=n, replacement=True)
         return motion_ids
 
     def sample_time(self, motion_ids, truncate_time=None):
@@ -255,12 +237,8 @@ class MotionLib(DeviceDtypeModuleMixin):
         motion_time = phase * torch.clip(motion_len, min=0)
         return motion_time
 
-    def sample_nearby_time(
-        self, motion_ids, motion_time, time_delta, truncate_time=None
-    ):
-        nearby_time = (
-            torch.rand(motion_ids.shape, device=self._device) - 0.5
-        ) * time_delta + motion_time
+    def sample_nearby_time(self, motion_ids, motion_time, time_delta, truncate_time=None):
+        nearby_time = (torch.rand(motion_ids.shape, device=self._device) - 0.5) * time_delta + motion_time
 
         motion_len = self.state.motion_lengths[motion_ids]
         if truncate_time is not None:
@@ -279,9 +257,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         num_frames = self.state.motion_num_frames[motion_ids]
         dt = self.state.motion_dt[motion_ids]
 
-        frame_idx0, frame_idx1, blend = self._calc_frame_blend(
-            motion_times, motion_len, num_frames, dt
-        )
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
@@ -326,9 +302,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         blend_exp = blend.unsqueeze(-1)
         key_pos = (1.0 - blend_exp) * key_pos0 + blend_exp * key_pos1
 
-        local_rot = torch_utils.slerp(
-            local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1)
-        )
+        local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
         dof_pos = self._local_rotation_to_dof(local_rot)
 
         return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos
@@ -348,11 +322,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         num_motion_files = len(motion_files)
         for f in range(num_motion_files):
             curr_file = motion_files[f]
-            print(
-                "Loading {:d}/{:d} motion files: {:s}".format(
-                    f + 1, num_motion_files, curr_file
-                )
-            )
+            print("Loading {:d}/{:d} motion files: {:s}".format(f + 1, num_motion_files, curr_file))
             curr_motion = SkeletonMotion.from_file(curr_file)
 
             motion_fps = curr_motion.fps
@@ -373,11 +343,9 @@ class MotionLib(DeviceDtypeModuleMixin):
                 curr_motion = DeviceCache(curr_motion, self._device)
             else:
                 curr_motion.tensor = curr_motion.tensor.to(self._device)
-                curr_motion._skeleton_tree._parent_indices = (
-                    curr_motion._skeleton_tree._parent_indices.to(self._device)
-                )
-                curr_motion._skeleton_tree._local_translation = (
-                    curr_motion._skeleton_tree._local_translation.to(self._device)
+                curr_motion._skeleton_tree._parent_indices = curr_motion._skeleton_tree._parent_indices.to(self._device)
+                curr_motion._skeleton_tree._local_translation = curr_motion._skeleton_tree._local_translation.to(
+                    self._device
                 )
                 curr_motion._rotation = curr_motion._rotation.to(self._device)
 
@@ -392,24 +360,14 @@ class MotionLib(DeviceDtypeModuleMixin):
             self._motion_weights.append(curr_weight)
             self._motion_files.append(curr_file)
 
-        self._motion_lengths = torch.tensor(
-            self._motion_lengths, device=self._device, dtype=torch.float32
-        )
+        self._motion_lengths = torch.tensor(self._motion_lengths, device=self._device, dtype=torch.float32)
 
-        self._motion_weights = torch.tensor(
-            self._motion_weights, dtype=torch.float32, device=self._device
-        )
+        self._motion_weights = torch.tensor(self._motion_weights, dtype=torch.float32, device=self._device)
         self._motion_weights /= self._motion_weights.sum()
 
-        self._motion_fps = torch.tensor(
-            self._motion_fps, device=self._device, dtype=torch.float32
-        )
-        self._motion_dt = torch.tensor(
-            self._motion_dt, device=self._device, dtype=torch.float32
-        )
-        self._motion_num_frames = torch.tensor(
-            self._motion_num_frames, device=self._device
-        )
+        self._motion_fps = torch.tensor(self._motion_fps, device=self._device, dtype=torch.float32)
+        self._motion_dt = torch.tensor(self._motion_dt, device=self._device, dtype=torch.float32)
+        self._motion_num_frames = torch.tensor(self._motion_num_frames, device=self._device)
 
         self.state = LoadedMotions(
             motions=tuple(self._motions),
@@ -424,11 +382,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         num_motions = self.num_motions()
         total_len = self.get_total_length()
 
-        print(
-            "Loaded {:d} motions with a total length of {:.3f}s.".format(
-                num_motions, total_len
-            )
-        )
+        print("Loaded {:d} motions with a total length of {:.3f}s.".format(num_motions, total_len))
 
         return motion_files
 
@@ -495,9 +449,7 @@ class MotionLib(DeviceDtypeModuleMixin):
         dof_offsets = self._dof_offsets
 
         n = local_rot.shape[0]
-        dof_pos = torch.zeros(
-            (n, self._num_dof), dtype=torch.float, device=self._device
-        )
+        dof_pos = torch.zeros((n, self._num_dof), dtype=torch.float, device=self._device)
 
         for j in range(len(body_ids)):
             body_id = body_ids[j]
@@ -511,9 +463,7 @@ class MotionLib(DeviceDtypeModuleMixin):
             elif joint_size == 1:
                 joint_q = local_rot[:, body_id]
                 joint_theta, joint_axis = torch_utils.quat_to_angle_axis(joint_q)
-                joint_theta = (
-                    joint_theta * joint_axis[..., 1]
-                )  # assume joint is always along y axis
+                joint_theta = joint_theta * joint_axis[..., 1]  # assume joint is always along y axis
 
                 joint_theta = normalize_angle(joint_theta)
                 dof_pos[:, joint_offset] = joint_theta
@@ -547,9 +497,7 @@ class MotionLib(DeviceDtypeModuleMixin):
             elif joint_size == 1:
                 assert joint_size == 1
                 joint_vel = local_vel[body_id]
-                dof_vel[joint_offset] = joint_vel[
-                    1
-                ]  # assume joint is always along y axis
+                dof_vel[joint_offset] = joint_vel[1]  # assume joint is always along y axis
 
             else:
                 print("Unsupported joint type")

@@ -41,7 +41,7 @@ motionname = "Standard Walk"
 # motionname = "Running"
 # motionname = "Idle"
 fbx_file = f"./motion_clips/dataset_processed/motion/{motionname}.fbx"
-out_path = f"./motion_clips/dataset_processed/npy_motion/{motionname}.npy"
+out_path = f"./motion_clips/dataset_processed/npy_motion/{motionname}.json"
 
 # import fbx file - make sure to provide a valid joint name for root_joint
 motion = SkeletonMotion.from_fbx(fbx_file_path=fbx_file, root_joint=root_joint, fps=60)

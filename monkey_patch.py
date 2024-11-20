@@ -1,3 +1,4 @@
+import isaacgym  # must import isaacgym before torch
 import rl_games.common.experience as experience
 from rl_games.common import a2c_common
 from torch_geometric.data import Data, Batch

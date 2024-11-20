@@ -16,7 +16,7 @@ class TerrainParkour(Terrain):
         self._combination_weights = [i.weight for i in self._skill_combinations]
         self._motion_lib = motion_lib
 
-        self._offset = torch.tensor([5, cfg.terrrain_width // 2, 0])
+        self._offset = torch.tensor([5, cfg.terrain_width // 2, 0])
         self._ego2pixel_scale = torch.tensor([cfg.horizontal_scale, cfg.horizontal_scale, cfg.vertical_scale])
 
         self.graph_list: List[List[ContactGraph]] = []
@@ -37,13 +37,18 @@ class TerrainParkour(Terrain):
     def curiculum(self, use_random=False, max_difficulty=False):
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
-                combine_item = np.random.choice(self._skill_combinations, p=self._combination_weights)
+                if len(self._combination_weights) > 1:
+                    combine_item = np.random.choice(self._skill_combinations, p=self._combination_weights)
+                else:
+                    combine_item = self._skill_combinations[0]
                 if not combine_item.fix_order:
                     random.shuffle(combine_item.skills)
+
+                skills = combine_item.skills + ["idle"] if self.cfg.add_idle_to_last else combine_item.skills
                 if max_difficulty:
-                    terrain = self.make_terrain(combine_item.skills, np.random.uniform(0.7, 1))
+                    terrain = self.make_terrain(skills, np.random.uniform(0.7, 1))
                 else:
-                    terrain = self.make_terrain(combine_item.skills, combine_item.get("diffculty", None))
+                    terrain = self.make_terrain(skills, combine_item.get("diffculty", None))
 
                 self.add_terrain_to_map(terrain, i, j)
 
@@ -58,8 +63,6 @@ class TerrainParkour(Terrain):
 
         graph_list: List[ContactGraph] = []
         lines, rotations = [], []
-        if self.cfg.add_idle_to_last:
-            skills.append("idle")
         for skill_name in skills:
             assert type(skill_name) == str
             cg = self._motion_lib.get_cg_by_skill(skill_name)
@@ -71,9 +74,9 @@ class TerrainParkour(Terrain):
             roll = self._roll_distribution.sample()
             line = cg.get_main_line()
             line = torch_utils.quat_apply(
-                torch_utils.quat_from_euler_xyz(roll=roll, pitch=0, yaw=0),
+                torch_utils.quat_from_euler_xyz(roll=roll, pitch=torch.tensor(0), yaw=torch.tensor(0)).to(line.device),
                 line,
-            )
+            ).view(-1, 3)
 
             lines.append(line)
             rotations.append(roll)
@@ -96,10 +99,16 @@ class TerrainParkour(Terrain):
         ################## generate skill terrains ##################
         for cg, translation, rotation in zip(graph_list, translations, rotations):
             sub_pixel_length, sub_pixel_height = (
-                int(cg.len_x / self.cfg.horizontal_scale),
-                int(cg.len_y / self.cfg.horizontal_scale),
+                1 + int(cg.len_x / self.cfg.horizontal_scale),
+                1 + int(cg.len_y / self.cfg.horizontal_scale),
             )
-            subterrain = np.zeros((sub_pixel_length, sub_pixel_height), dtype=np.int16)
+            subterrain = terrain_utils.SubTerrain(
+                "subterrain",
+                width=sub_pixel_length,
+                length=sub_pixel_height,
+                vertical_scale=self.cfg.vertical_scale,
+                horizontal_scale=self.cfg.horizontal_scale,
+            )
 
             if cg.skill_type == "vault" or cg.skill_type == "jump":
                 self.generate_vault_terrain(subterrain, cg, difficulty)
@@ -111,10 +120,10 @@ class TerrainParkour(Terrain):
                 return NotImplementedError
 
             draw_rectangle_(
-                subterrain,
+                subterrain.height_field_raw,
                 terrain.height_field_raw,
-                rotation,
-                translation.cpu().numpy(),
+                rotation.item(),
+                translation.cpu().numpy()[0:2],
             )
 
         self.graph_list.append(graph_list)
@@ -124,7 +133,7 @@ class TerrainParkour(Terrain):
         discrete_obstacles_height = 0.03 + difficulty * 0.15
         num_rectangles = 20
         rectangle_min_size = 0.5
-        rectangle_max_size = 2.0
+        rectangle_max_size = 1.0
         terrain_utils.discrete_obstacles_terrain(
             subterrain,
             discrete_obstacles_height,
@@ -137,10 +146,14 @@ class TerrainParkour(Terrain):
         # enforce the contact point is on the surface
         for node in cg.nodes:
             x, y, height = node.position.tolist()
-            y = int(y / self.cfg.horizontal_scale)
-            x = int(x / self.cfg.horizontal_scale)
-            height = subterrain.height_field_raw[x, y].item() * self.cfg.vertical_scale
+            py = int(x / self.cfg.horizontal_scale)
+            px = -int(y / self.cfg.horizontal_scale) + subterrain.height_field_raw.shape[0]
+            height = subterrain.height_field_raw[px, py].item() * self.cfg.vertical_scale
             node.position[2] = height
+            # px, py, pz = self.ego2pixel(cg._root_rotation, cg._root_translation, node.position)
+            # height = subterrain.height_field_raw[px, py].item() * self.cfg.vertical_scale
+            # height = self.grid2ego(cg._root_rotation, cg._root_translation, torch.tensor([0, 0, height]))[2]
+            # node.position[2] = height
 
     def generate_vault_terrain(self, subterrain, cg: ContactGraph, difficulty):
         lastx = 0
@@ -153,7 +166,7 @@ class TerrainParkour(Terrain):
                 sc = x - delta
             else:
                 sc = (lastx + x) // 2
-            subterrain[sc:, ...] = height
+            subterrain.height_field_raw[..., sc:] = height  # BUG EGO2PIXEL
             lastx = x
         return
 
