@@ -294,7 +294,8 @@ class ParkourSingle(HumanoidAMPTask):
                     goal = goal_positions[j]
                     goal_xy = goal[:2] + self.terrain.cfg.border_size
                     pts = (goal_xy / self.terrain.cfg.horizontal_scale).astype(int)
-                    goal_z = self.height_samples[pts[0], pts[1]].cpu().item() * self.terrain.cfg.vertical_scale
+                    # goal_z = self.height_samples[pts[0], pts[1]].cpu().item() * self.terrain.cfg.vertical_scale
+                    goal_z = goal[2]
                     pose = gymapi.Transform(gymapi.Vec3(goal[0], goal[1], goal_z), r=None)
 
                     i += cg_offset
