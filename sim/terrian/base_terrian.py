@@ -20,10 +20,10 @@ class TerrainParkour(Terrain):
         self._ego2pixel_scale = torch.tensor([cfg.horizontal_scale, cfg.horizontal_scale, cfg.vertical_scale])
 
         self.graph_list: List[List[ContactGraph]] = []
-        # _roll_distribution = torch.distributions.MultivariateNormal(
+        # _yaw_distribution = torch.distributions.MultivariateNormal(
         #     torch.zeros(3), torch.diag_embed(torch.tensor([0, 0, 1]))
         # )
-        self._roll_distribution = torch.distributions.Normal(0, 0.37)
+        self._yaw_distribution = torch.distributions.Normal(0, 0.37)
         super().__init__(cfg, num_envs)
 
     def get_graph_list(self):
@@ -71,17 +71,16 @@ class TerrainParkour(Terrain):
             if self.cfg.enable_scale:
                 cg.transform(scale=torch.tensor([1.0, 1.0, 1.0], device=cg.device))
 
-            roll = self._roll_distribution.sample()
+            yaw = self._yaw_distribution.sample()
             line = cg.get_main_line()
             line = torch_utils.quat_apply(
-                torch_utils.quat_from_euler_xyz(roll=roll, pitch=torch.tensor(0), yaw=torch.tensor(0)).to(line.device),
+                torch_utils.quat_from_euler_xyz(roll=torch.tensor(0), pitch=torch.tensor(0), yaw=yaw).to(line.device),
                 line,
             ).view(-1, 3)
 
             lines.append(line)
-            rotations.append(roll)
+            rotations.append(yaw)
             graph_list.append(cg)
-            # self.add_roughness(terrain)
 
         ################## connect graphs ##################
         translations = [self._offset.to(lines[0].device)]
@@ -180,7 +179,6 @@ class TerrainParkour(Terrain):
         end_y = self.border + (j + 1) * self.width_per_env_pixels
         self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
 
-        # env_origin_x = (i + 0.5) * self.env_length
         env_origin_x = i * self.env_length + 1.0
         env_origin_y = (j + 0.5) * self.env_width
         x1 = int((self.env_length / 2.0 - 0.5) / terrain.horizontal_scale)  # within 1 meter square range

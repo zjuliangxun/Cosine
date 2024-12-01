@@ -58,7 +58,8 @@ class ContactGraph(ContactGraphBase):
         pitch = pitch if isinstance(pitch, torch.Tensor) else torch.tensor(pitch)
         roll = roll if isinstance(roll, torch.Tensor) else torch.tensor(roll)
 
-        self._root_rotation = tf.quat_from_euler_xyz(yaw, pitch, roll).to(self.device)
+        # yaw for the rotation around z-axis, counter-clockwise(right-hand rule)
+        self._root_rotation = tf.quat_from_euler_xyz(roll, pitch, yaw).to(self.device)
         self._root_translation = torch.tensor([x, y, z], device=self.device)
 
     def build_adj_matrix(self):
