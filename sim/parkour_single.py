@@ -1,3 +1,4 @@
+from typing import List
 from time import time
 from omegaconf import OmegaConf
 from isaacgym import torch_utils, gymapi, gymutil
@@ -7,6 +8,8 @@ import numpy as np
 
 from data.skill_lib import SkillLib
 from data.contact_graph_base import CNode
+from data.contact_graph import ContactGraph
+
 from sim.humanoid_amp import HumanoidAMPTask
 from sim.terrian.base_terrian import TerrainParkour
 
@@ -21,6 +24,9 @@ class ParkourSingle(HumanoidAMPTask):
         cfg = OmegaConf.structured(cfg)
 
         super().__init__(cfg, sim_params, physics_engine, device_type, device_id, headless)
+        assert self._dof_offsets[-1] == self.num_dof
+
+    def create_terrain_related_buffers(self):
         #################### init contact graph buffers #####################
         if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
@@ -81,7 +87,6 @@ class ParkourSingle(HumanoidAMPTask):
             self.root_trans = [torch.cat(list(cgs[0].get_coord()), dim=-1) for cgs in graph_list]
             self.root_trans = torch.cat(self.root_trans, dim=0)  # TODO need 刷新当环境改变，
 
-            assert self._dof_offsets[-1] == self.num_dof
             return
 
     ############### parkour env creation methods ################
@@ -91,6 +96,48 @@ class ParkourSingle(HumanoidAMPTask):
         # TODO 添加penalised_contact_indices、termination_contact_indices
         # 添加触点的sensor和camera
         # get env origins
+
+    def _build_env(self, env_id, env_ptr, humanoid_asset):
+        col_group = env_id
+        col_filter = self._get_humanoid_collision_filter()
+        segmentation_id = 0
+
+        start_pose = gymapi.Transform()
+        char_h = 0.89
+        env_origin = self.terrain.get_env_origin(self.env_terrain_id[env_id])
+        env_origin[2] += char_h
+        start_pose.p = gymapi.Vec3(*env_origin)
+        start_pose.r = gymapi.Quat(0.0, 0.0, 0.0, 1.0)
+
+        humanoid_handle = self.gym.create_actor(
+            env_ptr,
+            humanoid_asset,
+            start_pose,
+            "humanoid",
+            col_group,
+            col_filter,
+            segmentation_id,
+        )
+
+        self.gym.enable_actor_dof_force_sensors(env_ptr, humanoid_handle)
+
+        for j in range(self.num_bodies):
+            self.gym.set_rigid_body_color(
+                env_ptr,
+                humanoid_handle,
+                j,
+                gymapi.MESH_VISUAL,
+                gymapi.Vec3(0.54, 0.85, 0.2),
+            )
+
+        if self._pd_control:
+            dof_prop = self.gym.get_asset_dof_properties(humanoid_asset)
+            dof_prop["driveMode"] = gymapi.DOF_MODE_POS
+            self.gym.set_actor_dof_properties(env_ptr, humanoid_handle, dof_prop)
+
+        self.humanoid_handles.append(humanoid_handle)
+
+        return
 
     def _create_ground_plane(self):
         """create terrain after sim initialization/before env creation"""
@@ -103,7 +150,7 @@ class ParkourSingle(HumanoidAMPTask):
         if mesh_type == "plane":
             super()._create_ground_plane()
         elif mesh_type in ["heightfield", "trimesh"]:
-            self.terrain = TerrainParkour(self.cfg["terrain"], self.num_envs)
+            self.create_terrain_related_buffers()
             if mesh_type == "heightfield":
                 self._create_heightfield()
             elif mesh_type == "trimesh":
@@ -287,14 +334,12 @@ class ParkourSingle(HumanoidAMPTask):
             cur_cg_id = self.cg_progress_buf[lookat_id].cpu().item()  # [ ] 到底是全局还是每个grid的cg号？
             cur_node_id = self.node_progress_buf[lookat_id].cpu().item()
 
-            cg_list = self.terrain.get_graph_list()[gridid]
+            cg_list: List[ContactGraph] = self.terrain.get_graph_list()[gridid]
             for i, cg in enumerate(cg_list):
                 goal_positions = cg.get_feat_tensor(device="cpu")[:, :3]
                 for j in range(len(goal_positions)):
                     goal = goal_positions[j]
-                    goal_xy = goal[:2] + self.terrain.cfg.border_size
-                    pts = (goal_xy / self.terrain.cfg.horizontal_scale).astype(int)
-                    goal_z = self.height_samples[pts[0], pts[1]].cpu().item() * self.terrain.cfg.vertical_scale
+                    goal_z = goal[2]
                     pose = gymapi.Transform(gymapi.Vec3(goal[0], goal[1], goal_z), r=None)
 
                     i += cg_offset

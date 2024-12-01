@@ -57,3 +57,140 @@ def draw_rectangle_(src, tar, angle: float = 0, translation=np.array([0, 0])):
 # point_on_line, direction = find_line_of_intersection(p1, p2, n1, n2)
 # print("交线的方向向量:", direction)
 # print("交线上的一个点:", point_on_line)
+
+import torch
+
+
+class FrameMap:
+    def __init__(self, width, length, offset, vertical_scale, horizontal_scale):
+
+        self.map_scale = np.array([horizontal_scale, horizontal_scale, vertical_scale])
+
+        self.length, self.width = length, width  # length 代表沿着x轴的长度，同时也是map的cv-y轴的长度
+        self.map = np.zeros((self.length, self.width), dtype=np.int16)  # NOTE 按照terrain_utils.Terrainl反 一下！
+
+        self.cart2map_offset_c = offset  # 初始时i左下角对齐x，这表示cart点加此平移到map上
+
+        # 父亲坐标系施加后得到本系的，例如把父亲坐标系旋转parent_rot得到本系
+        self.parent_trans = np.zeros(3)
+        self.parent_rot = 0  # yaw
+
+    def set_coord(self, trans, yaw):
+        if isinstance(trans, torch.Tensor):
+            trans = trans.cpu().numpy()
+        if isinstance(yaw, torch.Tensor):
+            yaw = yaw.cpu().numpy()
+        self.parent_rot = yaw
+        self.parent_trans = trans
+
+    def to_uv(self, coord):
+        if isinstance(coord, torch.Tensor):
+            coord = coord.cpu().numpy()
+        if coord.shape[-1] > 2:
+            coord = coord[..., :2]
+        uv = np.floor((coord + self.cart2map_offset_c) / self.map_xy_scale).astype(np.int32)
+        # return the coords in numpy array
+        return uv[0], uv[1]
+
+    def compose(self, src):  # NOTE 只考虑二维的变换，scale假设都是一样的！
+        a = (
+            (self.scale_mat_inv @ self.cart2map_mat)
+            @ (src.parent_trans_mat @ src.parent_rot_mat_inv)
+            @ (src.map2cart_mat @ src.scale_mat)
+        )
+        return src.parent_rot, a[..., 2].reshape(-1)
+
+    def draw_on_self(self, src_frame, q=None, t=None):
+        tar = self.map
+        src = src_frame.map
+        if q is None or t is None:
+            q, t = self.compose(src_frame)
+        angle = self._q2angle(q)
+        angle = angle * 180 / np.pi
+        translation = self._t2trans(t)
+
+        tar_height, tar_width = tar.shape
+
+        tx, ty = translation[1].item(), translation[0].item()
+        # Get the center of rotation, usually the center of src
+        center = (0, 0)
+        rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale=1)
+
+        rotation_matrix[0, 2] += tx
+        rotation_matrix[1, 2] += ty
+
+        # The output size is set to tar's dimensions to automatically handle clipping
+        # [ ] set borderMode to cv2.BorderTransparent 并且处理一下旋转后的锯齿问题
+        borderValue = 0
+        borderMode = cv2.BORDER_CONSTANT
+        result = cv2.warpAffine(
+            src, rotation_matrix, (tar_width, tar_height), borderMode=borderMode, borderValue=borderValue
+        )
+        tar[result != borderValue] = result[result != borderValue]
+
+    @property
+    def vertical_scale(self):
+        return self.map_scale[2]
+
+    @property
+    def horizontal_scale(self):
+        return self.map_scale[0]
+
+    @property
+    def height_field_raw(self):
+        return self.map
+
+    @property
+    def map_xy_scale(self):
+        return self.map_scale[:2]
+
+    @property
+    def scale_mat(self):
+        return np.diag(np.array([self.map_xy_scale[0], self.map_xy_scale[1], 1]))
+
+    @property
+    def scale_mat_inv(self):
+        return np.diag(1 / np.array([self.map_xy_scale[0], self.map_xy_scale[1], 1]))
+
+    @property
+    def map2cart_mat(self):
+        a = np.eye(3)
+        a[0:2, 2] = -self.cart2map_offset_c
+        return a
+
+    @property
+    def cart2map_mat(self):
+        a = np.eye(3)
+        a[0:2, 2] = self.cart2map_offset_c
+        return a
+
+    @property
+    def parent_trans_mat(self):
+        a = np.eye(3)
+        a[0:2, 2] = self.parent_trans[0:2]
+        return a
+
+    @property
+    def parent_rot_mat(self):
+        a = cv2.getRotationMatrix2D((0, 0), self.parent_rot * 180 / np.pi, scale=1)
+        return np.concatenate([a, np.array([[0, 0, 1]])], axis=0)
+
+    @property
+    def parent_rot_mat_inv(self):
+        a = cv2.getRotationMatrix2D((0, 0), -self.parent_rot * 180 / np.pi, scale=1)
+        return np.concatenate([a, np.array([[0, 0, 1]])], axis=0)
+
+    def _q2angle(self, q):
+        if isinstance(q, torch.Tensor):
+            q = q.cpu().numpy()
+        if isinstance(q, np.ndarray):
+            if len(q.shape) == 0:
+                return q.item()
+            else:
+                return q[0]
+        return q
+
+    def _t2trans(self, t):
+        if isinstance(t, torch.Tensor):
+            t = t.cpu().numpy()
+        return t[:2]

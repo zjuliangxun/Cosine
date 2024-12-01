@@ -53,7 +53,7 @@ class ContactGraph(ContactGraphBase):
     def edge_index_tensor(self):
         return self._edge_feat_tensor
 
-    def set_coord(self, x, y, z, yaw, pitch, roll):
+    def set_coord(self, x, y, z, roll, pitch, yaw):
         yaw = yaw if isinstance(yaw, torch.Tensor) else torch.tensor(yaw)
         pitch = pitch if isinstance(pitch, torch.Tensor) else torch.tensor(pitch)
         roll = roll if isinstance(roll, torch.Tensor) else torch.tensor(roll)
@@ -105,6 +105,8 @@ class ContactGraph(ContactGraphBase):
         id_end = list(self._tail_anchors)[0]
         st = self.nodes[id_st].position
         end = self.nodes[id_end].position
+        if end[0] > 0:
+            end = torch.zeros_like(end)
         self._main_line = torch.cat([st, end], dim=0).view(-1, 3)
         return self._main_line
 

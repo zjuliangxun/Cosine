@@ -126,6 +126,7 @@ def compute_humanoid_reset_cg(
     termination_heights,
     time_out_thresh,
 ):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, float, bool, Tensor, float) -> Tuple[Tensor, Tensor]
     terminated = torch.zeros_like(progress_buf)
     # terminate if all body under the thresh/many frames without goal reached
     if enable_early_termination:

@@ -14,7 +14,10 @@
           "environment.terrain.num_cols=2",
           "config.minibatch_size=16",
           "config.amp_batch_size=16",
-          "config.amp_minibatch_size=16"
+          "config.amp_minibatch_size=16",
+          "environment.env.envSpacing=0",
+          "environment.terrain.border_size=2",
+          "config.headless=False"
         ],
         "env": {
           "CUDA_VISIBLE_DEVICES": "0",
