@@ -40,10 +40,16 @@ class AMPResetStrategy:
             self._reset_actors(env_ids)
             ctx._reset_env_tensors(env_ids)
             ctx._refresh_sim_tensors()
+            ## must be called before _compute_observations, which uses cg_progress_buf
+            self._refresh_cg_buf(env_ids)
+            ## done
             ctx._compute_observations(env_ids)
 
         self._init_amp_obs(env_ids)
         return
+
+    def _refresh_cg_buf(env_ids):
+        pass
 
     def _reset_actors(self, env_ids):
         if self._state_init == self.StateInit.Default:
@@ -187,8 +193,7 @@ class CgRSIResetStrategy(AMPResetStrategy):
         if TYPE_CHECKING:
             self.ctx: ParkourSingle = ctx
 
-    def reset_env(self, env_ids):
-        super().reset_env(env_ids)
+    def _refresh_cg_buf(self, env_ids):
         self.ctx.time_out_buf[env_ids] = 0
         self.ctx.goal_reach_time_buf[env_ids] = 0
         self.ctx.goal_reached_buf[env_ids] = 0
@@ -291,8 +296,6 @@ class CgOriginResetStrategy(AMPResetStrategy):
 
     def __init__(self, ctx, state_init: str, hybrid_init_prob: float):
         super().__init__(ctx, state_init, hybrid_init_prob)
-        # TODO actor 要设置静止姿势
-        # TODO 放在cg图的原点： Pose 确保cg图的原点也是env的原点就行
 
     def _reset_actors(self, env_ids):
         if self._state_init == self.StateInit.Default:
@@ -301,8 +304,7 @@ class CgOriginResetStrategy(AMPResetStrategy):
             assert False, "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
         return
 
-    def reset_env(self, env_ids):
-        super().reset_env(env_ids)
+    def _refresh_cg_buf(self, env_ids):
         self.ctx.time_out_buf[env_ids] = 0
         self.ctx.goal_reach_time_buf[env_ids] = 0
         self.ctx.goal_reached_buf[env_ids] = 0

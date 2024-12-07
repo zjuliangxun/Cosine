@@ -28,7 +28,7 @@ class ParkourSingle(HumanoidAMPTask):
 
     def create_terrain_related_buffers(self):
         #################### init contact graph buffers #####################
-        if isinstance(self.terrain, TerrainParkour):  # TODO 没有处理地面的case
+        if isinstance(self.terrain, TerrainParkour):  # [ ] 没有处理地面的case
             graph_list = self.terrain.get_graph_list()
             # 每个环境属于哪个grid
             self.env_terrain_id = torch.randint(
@@ -141,7 +141,7 @@ class ParkourSingle(HumanoidAMPTask):
 
     def _create_ground_plane(self):
         """create terrain after sim initialization/before env creation"""
-        # TODO if self.cfg.depth.use_camera:
+        # [ ] if self.cfg.depth.use_camera:
         #     self.graphics_device_id = self.sim_device_id  # required in headless mode
 
         start = time()
@@ -244,7 +244,7 @@ class ParkourSingle(HumanoidAMPTask):
         delta_tf = torch.cat([q, t], dim=1)
 
         for ids, key in zip(self._get_env_cur_next_cg_id(env_ids), ("graph_obs", "graph_obs_next")):
-            batch = Batch.from_data_list(self.grid_cgs.index_select(ids))  # [ ] copy? or what
+            batch = Batch.from_data_list(self.grid_cgs.index_select(ids))
             node_counts = torch.bincount(batch.batch)
             expand_tf = torch.cat(
                 [delta_tf[i].unsqueeze(0).expand(node_counts[i], -1) for i in range(delta_tf.size(0))]
@@ -274,12 +274,13 @@ class ParkourSingle(HumanoidAMPTask):
         # reward distance
         d = torch.norm(ske_state[..., :3] - filtered_x[..., :3], dim=-1)
         rd = torch.exp(-d + 1e-7)
-        self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d > self.cfg.contact.reached_thresh, reduce="sum")
+
+        self.goal_reached_buf.scatter_reduce_(0, filtered_batch_id, d < self.cfg.contact.reached_thresh, reduce="sum")
+        self.goal_reach_time_buf[self.goal_reached_buf] += 1
 
         # BUG Reproducibility issue
         self.rew_buf[:] = self.rew_buf.scatter_reduce(0, filtered_batch_id, rd, reduce="sum")
 
-        self.goal_reach_time_buf[self.goal_reached_buf] += 1
         self._update_reward_goals()
         return
 
@@ -312,8 +313,8 @@ class ParkourSingle(HumanoidAMPTask):
         env_cg_id = self.cg_progress_buf[env_ids]
         env_cur_cg_id = self.grid_cg_offset[env_grid_id] + env_cg_id
         env_next_cg_id = torch.where(
-            env_cg_id == self.terrain_cg_nums[env_grid_id],
-            self._cg_nums,
+            env_cg_id == self.terrain_cg_nums[env_grid_id] - 1,  # env_cg_id starts from 0!
+            env_cur_cg_id,
             env_cur_cg_id + 1,
         )
         return env_cur_cg_id, env_next_cg_id

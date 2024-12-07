@@ -140,7 +140,7 @@ def compute_humanoid_reset_cg(
         has_fallen = torch.logical_and(has_time_out, fall_height)
         terminated = torch.where(has_fallen, torch.ones_like(progress_buf), terminated)
 
-    has_done = torch.logical_and(
+    has_done = torch.logical_or(
         progress_buf >= max_episode_length - 1,
         # all the cgs in a grid has been traversed
         cg_progress_buf >= max_cg_num_buf,

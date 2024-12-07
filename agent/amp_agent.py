@@ -44,7 +44,7 @@ import agent.common_agent as common_agent
 class AMPAgent(common_agent.CommonAgent):
     def __init__(self, base_name, config):
         super().__init__(base_name, config)
-
+        self.dones = None
         if self._normalize_amp_input:
             self._amp_input_mean_std = RunningMeanStd(
                 (self._amp_observation_space.shape[0] // self.vec_env.env.task._num_amp_obs_steps,)
@@ -87,7 +87,10 @@ class AMPAgent(common_agent.CommonAgent):
         self.set_eval()
 
         epinfos = []
-        done_indices = []
+        if self.dones is None:
+            done_indices = []
+        else:
+            done_indices = self.dones.nonzero(as_tuple=False)[:: self.num_agents][:, 0]
         update_list = self.update_list
 
         for n in range(self.horizon_length):

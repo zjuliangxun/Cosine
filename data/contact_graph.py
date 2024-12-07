@@ -86,7 +86,6 @@ class ContactGraph(ContactGraphBase):
             if self.use_edge_feat:
                 edge_list = [(edge.start_node, edge.end_node) for edge in self.edges]
                 self._edge_feat_tensor = torch.tensor(edge_list, dtype=torch.long, device=device)
-        # TODO check if need reverse
         ret = CNode.tf_apply_onfeat(self._root_rotation, self._root_translation, self._node_feat_tensor)
         if self.use_edge_feat:
             ret += tuple(self._edge_feat_tensor)

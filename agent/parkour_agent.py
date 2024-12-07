@@ -69,9 +69,13 @@ class ParkourAgent(amp_agent.AMPAgent):
 
     def play_steps(self):
         self.set_eval()
-
         epinfos = []
-        done_indices = []
+
+        if self.dones is None:
+            done_indices = []
+        else:
+            done_indices = self.dones.nonzero(as_tuple=False)[:: self.num_agents][:, 0]
+
         update_list = self.update_list
 
         for n in range(self.horizon_length):

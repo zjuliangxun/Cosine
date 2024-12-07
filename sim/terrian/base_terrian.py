@@ -196,4 +196,4 @@ class TerrainParkour(Terrain):
             env_grid_id = env_grid_id.item()  # cpu().numpy()
         col = env_grid_id % self.cfg.num_cols
         row = env_grid_id // self.cfg.num_cols
-        return self.env_origins[row, col]
+        return self.env_origins[row, col].copy()
