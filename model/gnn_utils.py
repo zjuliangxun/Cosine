@@ -10,29 +10,31 @@ class GATModel(torch.nn.Module):
     def __init__(self, node_features_dim, output_features_dim, hidden_dim=16, num_heads=4):
         super().__init__()
         # [ ] 调整模型结构
-        self.model = nn.Sequential(
-            [
-                GATConv(node_features_dim, hidden_dim, num_heads),
-                GraphNorm(hidden_dim),
-                GATConv(hidden_dim, output_features_dim, num_heads),
-                GraphNorm(output_features_dim),
-            ]
-        )
+        self.num_heads = num_heads
+        self.hidden_dim = hidden_dim * num_heads
+        self.gat1 = GATConv(node_features_dim, hidden_dim, num_heads)
+        self.norm1 = GraphNorm(self.hidden_dim)
+        self.gat2 = GATConv(self.hidden_dim, output_features_dim, num_heads, concat=False)
+        self.norm2 = GraphNorm(output_features_dim)
         return
 
     def forward(self, batch: Batch):
         x, edge_index, batch_index = batch.x, batch.edge_index, batch.batch
-        x = self.model(x, edge_index)
+        x = self.gat1(x, edge_index)
+        x = self.norm1(x)
+        x = self.gat2(x, edge_index)
+        x = self.norm2(x)
+
         x = global_mean_pool(x, batch_index)  # 使用全局平均池化以保持每个图的独立性,这将对每个图的节点进行平均
         return x
 
 
 if __name__ == "__main__":
     # 假设node_features_dim为特征的维度，output_features_dim为输出的特征维度
-    node_features_dim = 3  # 节点特征的维数
-    output_features_dim = 10  # 输出特征的维数
+    node_features_dim = 8  # 节点特征的维数
+    output_features_dim = 16  # 输出特征的维数
 
-    model = GATModel(node_features_dim, output_features_dim)
+    model = GATModel(node_features_dim, output_features_dim, 32, 4)
 
     # 构造一批图数据
     graphs = []

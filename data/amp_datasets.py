@@ -49,7 +49,7 @@ class AMPDataset(datasets.PPODataset):
         input_dict = {}
         for k, v in self.values_dict.items():
             if k not in self.special_names and v is not None:
-                if type(v) is Batch:
+                if isinstance(v, Batch):
                     input_dict[k] = Batch.from_data_list(v.index_select(sample_idx))
                 else:
                     input_dict[k] = v[sample_idx]

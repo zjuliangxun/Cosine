@@ -12,3 +12,8 @@ python run_train.py \
     config.minibatch_size=16 \
     config.amp_batch_size=16 \
     config.amp_minibatch_size=16 \
+
+# AMP to parkour
+# model.name=parkour \
+# algo.name=parkour \
+# network=gnn \

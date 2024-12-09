@@ -268,7 +268,7 @@ class HumanoidAMPBase(Humanoid):
 class HumanoidAMPTask(HumanoidAMPBase):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         self._enable_task_obs = cfg["env"]["enableTaskObs"]
-
+        self._task_obs_fix_length = cfg["env"].get("taskObsFixLength", True)
         super().__init__(
             cfg=cfg,
             sim_params=sim_params,
@@ -315,7 +315,7 @@ class HumanoidAMPTask(HumanoidAMPBase):
     def _compute_observations(self, env_ids=None):
         humanoid_obs = self._compute_humanoid_obs(env_ids)
 
-        if self._enable_task_obs:
+        if self._enable_task_obs and self._task_obs_fix_length:
             task_obs = self._compute_task_obs(env_ids)
             obs = torch.cat([humanoid_obs, task_obs], dim=-1)
         else:

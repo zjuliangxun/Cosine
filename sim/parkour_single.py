@@ -250,8 +250,16 @@ class ParkourSingle(HumanoidAMPTask):
                 [delta_tf[i].unsqueeze(0).expand(node_counts[i], -1) for i in range(delta_tf.size(0))]
             )
             batch.x = CNode.tf_apply_onfeat(expand_tf[..., 0:4], expand_tf[..., 4:], batch.x)
-            self.extras[key] = batch
 
+            if env_ids is None or env_ids.size(0) == self.num_envs:
+                pass
+            else:
+                src_data = batch.to_data_list()
+                data_list = self.extras[key].to_data_list()
+                for j, env_id in enumerate(env_ids.tolist()):
+                    data_list[env_id] = src_data[j]
+                    batch = Batch.from_data_list(data_list)
+            self.extras[key] = batch
         return
 
     def _compute_reward(self, actions):

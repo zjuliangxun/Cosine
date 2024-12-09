@@ -1,7 +1,6 @@
 import isaacgym  # must import isaacgym before torch
-import rl_games.common.experience as experience
-from rl_games.common import a2c_common
-from torch_geometric.data import Data, Batch
+from rl_games.common import experience, a2c_common
+from torch_geometric.data import Batch, Data
 from typing import List
 
 BaseExpBuffer = experience.ExperienceBuffer
@@ -14,10 +13,10 @@ class ExperienceBufferPyG(BaseExpBuffer):
         super()._init_from_env_info(env_info)
 
     def update_data(self, name, index, val):
-        if type(val) is dict:
+        if isinstance(val, dict):
             for k, v in val.items():
                 self.tensor_dict[name][k][index, :] = v
-        elif type(val) is Batch:
+        elif isinstance(val, Batch):
             self.tensor_dict[name][index] = val.to_data_list()
         else:
             self.tensor_dict[name][index, :] = val
@@ -26,12 +25,12 @@ class ExperienceBufferPyG(BaseExpBuffer):
         return NotImplementedError
 
     def _do_op(self, v, transform_op):
-        if type(v) is dict:
+        if isinstance(v, dict):
             transformed_dict = {}
             for kd, vd in v.items():
                 transformed_dict[kd] = transform_op(vd)
             return transformed_dict
-        elif (type(v) is List) and (type(v[0]) is Batch):
+        elif isinstance(v, List) and isinstance(v[0], Batch):
             assert transform_op == a2c_common.swap_and_flatten01
             tmp = [[v[j][i] for j in range(self.horizon_length)] for i in range(self.num_actors)]
             return Batch.from_data_list(tmp)
@@ -50,7 +49,7 @@ class ExperienceBufferPyG(BaseExpBuffer):
             v = self.tensor_dict.get(k)
             if v is None:
                 continue
-            self._do_op(v, transform_op)
+            res_dict[k] = self._do_op(v, transform_op)
         return res_dict
 
 

@@ -75,8 +75,7 @@ class ContactGraph(ContactGraphBase):
             self._order2edgemap[e.order].append(i)
 
         self._edge_feat_tensor = torch.tensor(
-            [(edge.start_node, edge.end_node) for edge in self.edges],
-            device=self.device,
+            [(edge.start_node, edge.end_node) for edge in self.edges], device=self.device, dtype=torch.long
         ).reshape(2, -1)
 
     def get_feat_tensor(self, device="cpu"):
@@ -183,10 +182,6 @@ class ContactGraph(ContactGraphBase):
         line = self.get_main_line()
         self.len_x = 1.2 * torch.norm(line[1] - line[0]).item()
         self.len_y = 4
-
-    def to_batch(self):
-        # transform the graph to a Batch object in pytorch geometric for batch processing
-        return Data(x=self._node_feat_tensor, edge_index=self._edge_feat_tensor)
 
     def build_order_time_range(self):
         self.order_time_tensor = []

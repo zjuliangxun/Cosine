@@ -17,13 +17,11 @@ class ParkourAgent(amp_agent.AMPAgent):
 
     def __init__(self, base_name, config):
         super().__init__(base_name, config)
-        self.experience_buffer.tensor_dict["graph_obs"] = [None] * self.experience_buffer.horizon_length
-        self.experience_buffer.tensor_dict["graph_obs_next"] = [None] * self.experience_buffer.horizon_length
 
         # [ ] cond disc 需要额外调用_preproc_task_obs
-        self._normalize_graph_input = config.agent.get("normalize_graph_input", True)
+        self._normalize_graph_input = config.get("normalize_graph_input", True)
         if self._normalize_graph_input:
-            self._graph_input_mean_std = RunningMeanStd((config.agent.graph_feat_dim,)).to(self.ppo_device)
+            self._graph_input_mean_std = RunningMeanStd((config["graph_input_mean_std"],)).to(self.ppo_device)
 
         return
 
@@ -52,15 +50,22 @@ class ParkourAgent(amp_agent.AMPAgent):
             self._graph_input_mean_std.load_state_dict(weights["graph_input_mean_std"])
         return
 
+    def _build_amp_buffers(self):
+        super()._build_amp_buffers()
+        self.experience_buffer.tensor_dict["graph_obs"] = [None] * self.experience_buffer.horizon_length
+        self.experience_buffer.tensor_dict["graph_obs_next"] = [None] * self.experience_buffer.horizon_length
+
     def _preproc_task_obs(self, graph_obs):
         if self._normalize_graph_input:
-            graph_obs.x = self._amp_input_mean_std(graph_obs.x)
+            graph_obs.x = self._graph_input_mean_std(graph_obs.x)
         return graph_obs
 
     def calc_gradients(self, input_dict):
-        input_dict["graph_obs"] = self._preproc_task_obs(input_dict["graph_obs"])
-        input_dict["graph_obs_next"] = self._preproc_task_obs(input_dict["graph_obs_next"])
-        return super().calc_gradients(input_dict)
+        batch_dict_toadd = {
+            "graph_obs": self._preproc_task_obs(input_dict["graph_obs"]),
+            "graph_obs_next": self._preproc_task_obs(input_dict["graph_obs_next"]),
+        }
+        return super().calc_gradients(input_dict, batch_dict_toadd=batch_dict_toadd)
 
     def prepare_dataset(self, batch_dict):
         super().prepare_dataset(batch_dict)
@@ -69,25 +74,26 @@ class ParkourAgent(amp_agent.AMPAgent):
 
     def play_steps(self):
         self.set_eval()
-        epinfos = []
-
+        ## change
         if self.dones is None:
             done_indices = []
         else:
             done_indices = self.dones.nonzero(as_tuple=False)[:: self.num_agents][:, 0]
-
+        # end
         update_list = self.update_list
 
         for n in range(self.horizon_length):
 
+            ## change
             self.obs = self.env_reset(done_indices)
+            # end
             self.experience_buffer.update_data("obses", n, self.obs["obs"])
 
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
-                res_dict = self.get_action_values(self.obs, self._rand_action_probs)
+                res_dict = self.get_action_values(self.obs, self._rand_action_probs, infos=infos)
 
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k])
@@ -152,6 +158,50 @@ class ParkourAgent(amp_agent.AMPAgent):
 
         return batch_dict
 
+    def get_action_values(self, obs_dict, rand_action_probs, **kwargs):
+        processed_obs = self._preproc_obs(obs_dict["obs"])
+
+        self.model.eval()
+        # change
+        input_dict = {
+            "is_train": False,
+            "prev_actions": None,
+            "obs": processed_obs,
+            "rnn_states": self.rnn_states,
+            "graph_obs": kwargs["infos"]["graph_obs"],
+            "graph_obs_next": kwargs["infos"]["graph_obs_next"],
+        }
+        # done
+
+        with torch.no_grad():
+            res_dict = self.model(input_dict)
+            if self.has_central_value:
+                states = obs_dict["states"]
+                input_dict = {
+                    "is_train": False,
+                    "states": states,
+                }
+                value = self.get_central_value(input_dict)
+                res_dict["values"] = value
+
+        if self.normalize_value:
+            res_dict["values"] = self.value_mean_std(res_dict["values"], True)
+
+        rand_action_mask = torch.bernoulli(rand_action_probs)
+        det_action_mask = rand_action_mask == 0.0
+        res_dict["actions"][det_action_mask] = res_dict["mus"][det_action_mask]
+        res_dict["rand_action_mask"] = rand_action_mask
+
+        return res_dict
+
+    def _log_train_info(self, train_info, frame):
+        super()._log_train_info(train_info, frame)
+        # [ ] 从env获得当前的图像并且用下列api写出来
+        # from isaacgym import gymapi
+        # if self._log_image_flag and self.rank == 0:
+        #     img = self.gym.get_camera_image(sim, envs[i], camera_handles[i][j], gymapi.IMAGE_COLOR)
+        #     self.writer.add_figure("林麻子matplotlib figure林祖泉", fig, global_step=None, close=False, walltime=None)
+        # return
     ########### [x] reward and grad
     def _combine_rewards(self, task_rewards, amp_rewards):
         disc_r = amp_rewards["disc_rewards"]

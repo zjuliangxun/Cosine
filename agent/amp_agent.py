@@ -301,7 +301,7 @@ class AMPAgent(common_agent.CommonAgent):
 
         return train_info
 
-    def calc_gradients(self, input_dict):
+    def calc_gradients(self, input_dict, batch_dict_toadd=None):
         self.set_train()
 
         value_preds_batch = input_dict["old_values"]
@@ -339,6 +339,8 @@ class AMPAgent(common_agent.CommonAgent):
             "amp_obs_replay": amp_obs_replay,
             "amp_obs_demo": amp_obs_demo,
         }
+        if batch_dict_toadd is not None:
+            batch_dict.update(batch_dict_toadd)
 
         rnn_masks = None
         if self.is_rnn:

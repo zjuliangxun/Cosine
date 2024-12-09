@@ -44,7 +44,7 @@ class ParkourBuilder(amp_network_builder.AMPBuilder):
             super().__init__(params, **kwargs)  # PARAMS = CFG.NETWORK
             # [ ] cnn的输入列表要扩大
             # 如何选取obs的channel？一方面是对task的高效表征所以不应该太差，另一方面又要考虑压缩和性能，和action的隐状态相比尺度如何
-            self.graph_obs_net = GATModel(**self.params["graph_obs_net"])
+            self.graph_obs_net = GATModel(**params["graph_obs_net"])
             return
 
         def load(self, params):
