@@ -95,7 +95,7 @@ class AMPAgent(common_agent.CommonAgent):
 
         for n in range(self.horizon_length):
 
-            self.obs = self.env_reset(done_indices)
+            self.obs, _ = self.env_reset(done_indices)
             self.experience_buffer.update_data("obses", n, self.obs["obs"])
 
             if self.use_action_masks:

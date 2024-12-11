@@ -136,4 +136,4 @@ class VecTaskPython(VecTask):
         # step the simulator
         self.task.step(actions)
 
-        return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
+        return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.extras

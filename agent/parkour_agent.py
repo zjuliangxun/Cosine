@@ -85,7 +85,7 @@ class ParkourAgent(amp_agent.AMPAgent):
         for n in range(self.horizon_length):
 
             ## change
-            self.obs = self.env_reset(done_indices)
+            self.obs, infos = self.env_reset(done_indices)
             # end
             self.experience_buffer.update_data("obses", n, self.obs["obs"])
 
