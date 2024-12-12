@@ -55,6 +55,21 @@ class ParkourAgent(amp_agent.AMPAgent):
         self.experience_buffer.tensor_dict["graph_obs"] = [None] * self.experience_buffer.horizon_length
         self.experience_buffer.tensor_dict["graph_obs_next"] = [None] * self.experience_buffer.horizon_length
 
+    def _build_net_config(self):
+        # add graph obs shape to model mlp layers
+        config = super()._build_net_config()
+        length = self.config.get("varlen_input_shape", 0)
+        if length > 0:
+            input_shape = list(config["input_shape"])
+            input_shape[0] += length
+            config["input_shape"] = tuple(input_shape)
+        return config
+
+    def init_tensors(self):
+        super().init_tensors()
+        self.tensor_list += ["graph_obs", "graph_obs_next"]
+        return
+
     def _preproc_task_obs(self, graph_obs):
         if self._normalize_graph_input:
             graph_obs.x = self._graph_input_mean_std(graph_obs.x)
@@ -114,7 +129,7 @@ class ParkourAgent(amp_agent.AMPAgent):
             ## end
             terminated = infos["terminate"].float()
             terminated = terminated.unsqueeze(-1)
-            next_vals = self._eval_critic(self.obs)
+            next_vals = self._eval_critic(self.obs, infos)
             next_vals *= 1.0 - terminated
             self.experience_buffer.update_data("next_values", n, next_vals)
 
@@ -158,18 +173,34 @@ class ParkourAgent(amp_agent.AMPAgent):
 
         return batch_dict
 
-    def get_action_values(self, obs_dict, rand_action_probs, **kwargs):
-        processed_obs = self._preproc_obs(obs_dict["obs"])
-
+    # TODO 考虑把graph obs全部转为tensor存储, 避免batch的list操作
+    def _eval_critic(self, obs_dict, infos):
         self.model.eval()
+        obs = obs_dict["obs"]
+        processed_obs = self._preproc_obs(obs)
+        graph_obs = self._preproc_task_obs(infos["graph_obs"])
+        graph_obs_next = self._preproc_task_obs(infos["graph_obs_next"])
+
+        value = self.model.a2c_network.eval_critic_alone(processed_obs, graph_obs, graph_obs_next)
+
+        if self.normalize_value:
+            value = self.value_mean_std(value, True)
+        return value
+
+    def get_action_values(self, obs_dict, rand_action_probs, **kwargs):
+        self.model.eval()
+
+        processed_obs = self._preproc_obs(obs_dict["obs"])
+        graph_obs = self._preproc_task_obs(kwargs["infos"]["graph_obs"])
+        graph_obs_next = self._preproc_task_obs(kwargs["infos"]["graph_obs_next"])
         # change
         input_dict = {
             "is_train": False,
             "prev_actions": None,
             "obs": processed_obs,
             "rnn_states": self.rnn_states,
-            "graph_obs": kwargs["infos"]["graph_obs"],
-            "graph_obs_next": kwargs["infos"]["graph_obs_next"],
+            "graph_obs": graph_obs,
+            "graph_obs_next": graph_obs_next,
         }
         # done
 

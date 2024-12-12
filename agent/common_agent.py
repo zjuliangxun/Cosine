@@ -96,6 +96,19 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
     def init_tensors(self):
         super().init_tensors()
+
+        from monkey_patch import ExperienceBufferPyG
+
+        self.experience_buffer = ExperienceBufferPyG(
+            self.env_info,
+            {
+                "num_actors": self.num_actors,
+                "horizon_length": self.horizon_length,
+                "has_central_value": self.has_central_value,
+                "use_action_masks": self.use_action_masks,
+            },
+            self.ppo_device,
+        )
         self.experience_buffer.tensor_dict["next_obses"] = torch.zeros_like(self.experience_buffer.tensor_dict["obses"])
         self.experience_buffer.tensor_dict["next_values"] = torch.zeros_like(
             self.experience_buffer.tensor_dict["values"]
@@ -471,9 +484,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return mb_advs
 
     def env_reset(self, env_ids=None):
-        obs = self.vec_env.reset(env_ids)
+        obs, infos = self.vec_env.reset(env_ids)
         obs = self.obs_to_tensors(obs)
-        return obs
+        return obs, infos
 
     def bound_loss(self, mu):
         if self.bounds_loss_coef is not None:

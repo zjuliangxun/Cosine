@@ -30,9 +30,9 @@ class ExperienceBufferPyG(BaseExpBuffer):
             for kd, vd in v.items():
                 transformed_dict[kd] = transform_op(vd)
             return transformed_dict
-        elif isinstance(v, List) and isinstance(v[0], Batch):
+        elif isinstance(v, List) and isinstance(v[0][0], Data):
             assert transform_op == a2c_common.swap_and_flatten01
-            tmp = [[v[j][i] for j in range(self.horizon_length)] for i in range(self.num_actors)]
+            tmp = [v[j][i] for j in range(self.horizon_length) for i in range(self.num_actors)]
             return Batch.from_data_list(tmp)
         else:
             return transform_op(v)

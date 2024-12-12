@@ -55,11 +55,22 @@ class ParkourBuilder(amp_network_builder.AMPBuilder):
             self._disc_initializer = params["disc"]["initializer"]
             return
 
+        def compute_graph_obs(self, obs, obs_next=None):
+            if obs_next is not None:
+                return self.graph_obs_net(obs), self.graph_obs_net(obs_next)
+            else:
+                return self.graph_obs_net(obs)
+
+        def eval_critic_alone(self, obs, task_obs, next_task_obs):
+            # input are batches, without graph net process
+            task_obs, next_task_obs = self.compute_graph_obs(task_obs, next_task_obs)
+            obs = torch.cat([obs, task_obs, next_task_obs], dim=-1)
+            return self.eval_critic(obs)
+
         def forward(self, obs_dict):
             obs = obs_dict["obs"]
             states = obs_dict.get("rnn_states", None)
-            task_obs = self.graph_obs_net(obs_dict["graph_obs"])
-            next_task_obs = self.graph_obs_net(obs_dict["graph_obs_next"])
+            task_obs, next_task_obs = self.compute_graph_obs(obs_dict["graph_obs"], obs_dict["graph_obs_next"])
 
             obs = torch.cat([obs, task_obs, next_task_obs], dim=-1)
             actor_outputs = self.eval_actor(obs)
