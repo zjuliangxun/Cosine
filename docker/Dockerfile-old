@@ -1,0 +1,102 @@
+FROM ngc.nju.edu.cn/nvidia/cuda:11.7.1-devel-ubuntu22.04 
+ENV DEBIAN_FRONTEND=noninteractive 
+ENV NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=all
+
+RUN echo "\ 
+Types: deb\n\
+URIs: https://mirrors.zju.edu.cn/ubuntu/\n\
+Suites: noble noble-updates noble-backports\n\
+Components: main restricted universe multiverse\n\
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\
+\n\
+Types: deb\n\
+URIs: https://mirrors.zju.edu.cn/ubuntu/\n\
+Suites: noble-security\n\
+Components: main restricted universe multiverse\n\
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" > /etc/apt/sources.list.d/ubuntu.sources
+
+RUN echo "\
+channels:\n\
+  - pytorch\n\
+  - conda-forge\n\
+  - defaults\n\
+show_channel_urls: true\n\
+default_channels:\n\
+  - https://mirrors.zju.edu.cn/anaconda/pkgs/main\n\
+  - https://mirrors.zju.edu.cn/anaconda/pkgs/r\n\
+  - https://mirrors.zju.edu.cn/anaconda/pkgs/msys2\n\
+custom_channels:\n\
+  conda-forge: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  msys2: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  bioconda: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  menpo: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  pytorch: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  pytorch-lts: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+  simpleitk: https://mirrors.zju.edu.cn/anaconda/cloud\n\
+channel_priority: flexible" > ~/.condarc
+RUN touch /etc/pip.conf
+RUN echo "\
+[global]\n\
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple\n\
+" > /etc/pip.conf
+
+# 安装基础工具
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+ libxcursor-dev \
+ libxrandr-dev \
+ libxinerama-dev \
+ libxi-dev \
+ mesa-common-dev \
+ zip \
+ unzip \
+ make \
+ gcc-8 \
+ g++-8 \
+ vulkan-tools \
+ mesa-vulkan-drivers \
+ pigz \
+ git \
+ libegl1 \
+ git-lfs \
+ tmux \
+ vim \
+ sudo \
+ && rm -rf /var/lib/apt/lists/*
+
+# 安装isaac时的包
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8
+RUN rm /usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0 /usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0.0.0 /usr/share/glvnd/egl_vendor.d/50_mesa.json
+COPY docker/nvidia_icd.json /usr/share/vulkan/icd.d/nvidia_icd.json
+COPY docker/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+
+# 创建一个新的用户 gymuser，并设置密码（可选）
+RUN useradd --create-home -m -s /bin/bash gymuser && echo "gymuser:123" | chpasswd
+RUN usermod -aG sudo gymuser
+RUN echo "gymuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+USER gymuser
+WORKDIR /home/gymuser
+RUN sudo chown -R gymuser:gymuser /home/gymuser
+# copy gym repo to docker 
+COPY --chown=gymuser . .
+
+# ports
+EXPOSE 22
+EXPOSE 6006
+EXPOSE 8888
+
+# # install conda
+# ENV CONDA_DIR /opt/conda
+# RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+#      /bin/bash ~/miniconda.sh -b -p /opt/conda
+# ENV PATH=$CONDA_DIR/bin:$PATH
+
+# # 安装conda python环境
+# RUN bash docker/create_conda_env.sh
+
+# # install gym modules
+# ENV PATH="/home/gymuser/.local/bin:$PATH"
+# RUN cd python && pip install -q -e .
+
+
