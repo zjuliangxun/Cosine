@@ -68,8 +68,8 @@ class Humanoid(BaseTask):
         self.cfg["device_type"] = device_type
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
-
-        super().__init__(cfg=self.cfg)
+        self.enable_camera_sensors = self.cfg["env"]["enableCameraSensors"]
+        super().__init__(cfg=self.cfg, enable_camera_sensors=self.enable_camera_sensors)
 
         self.dt = self.control_freq_inv * sim_params.dt
 

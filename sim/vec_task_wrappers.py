@@ -41,9 +41,7 @@ class VecTaskCPUWrapper(VecTaskCPU):
         clip_observations=5.0,
         clip_actions=1.0,
     ):
-        super().__init__(
-            task, rl_device, sync_frame_time, clip_observations, clip_actions
-        )
+        super().__init__(task, rl_device, sync_frame_time, clip_observations, clip_actions)
         return
 
 
@@ -69,9 +67,7 @@ class VecTaskPythonWrapper(VecTaskPython):
 
     def reset(self, env_ids=None):
         self.task.reset(env_ids)
-        return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(
-            self.rl_device
-        ), self.task.extras
+        return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.extras
 
     @property
     def amp_observation_space(self):
@@ -92,3 +88,6 @@ class VecTaskPythonWrapper(VecTaskPython):
 
     def fetch_amp_obs_demo_per_id(self, num_samples, motion_ids):
         return self.task.fetch_amp_obs_demo_per_id(num_samples, motion_ids)
+
+    def get_image(self, env_id=0):
+        return self.task.get_image(env_id)

@@ -1,7 +1,7 @@
 from typing import List
 from time import time
 from omegaconf import OmegaConf
-from isaacgym import torch_utils, gymapi, gymutil
+from isaacgym import torch_utils, gymapi, gymutil, gymtorch
 from torch_geometric.data import Data, Batch
 import torch
 import numpy as np
@@ -27,6 +27,17 @@ class ParkourSingle(HumanoidAMPTask):
 
         super().__init__(cfg, sim_params, physics_engine, device_type, device_id, headless)
         assert self._dof_offsets[-1] == self.num_dof
+
+        # logger camera for tensorboard
+        if not self.enable_camera_sensors:
+            camera_props = gymapi.CameraProperties()
+            camera_props.enable_tensors = True  # must be true if headless rendering!
+            camera_props.width = 720
+            camera_props.height = 720
+            self.logger_cam_handle = self.gym.create_camera_sensor(self.envs[0], camera_props)
+            cam_pos = gymapi.Vec3(6.0, -6.0, 5.0)
+            cam_target = gymapi.Vec3(6.0, 10.0, 0.0)
+            self.gym.set_camera_location(self.logger_cam_handle, self.envs[0], cam_pos, cam_target)
 
     def create_terrain_related_buffers(self):
         #################### init contact graph buffers #####################
@@ -328,6 +339,18 @@ class ParkourSingle(HumanoidAMPTask):
             env_cur_cg_id + 1,
         )
         return env_cur_cg_id, env_next_cg_id
+
+    def get_image(self, env_id=0):
+        # self.gym.get_camera_image(self.sim, self.envs[env_id], self.logger_cam_handle, gymapi.IMAGE_COLOR)
+        self.gym.render_all_camera_sensors(self.sim)
+        self.gym.fetch_results(self.sim, True)
+        if not self.enable_camera_sensors:
+            return None
+        camera_tensor = self.gym.get_camera_image_gpu_tensor(
+            self.sim, self.envs[0], self.logger_cam_handle, gymapi.IMAGE_COLOR
+        )
+        camera_image = gymtorch.wrap_tensor(camera_tensor).permute(2, 0, 1).cpu().numpy()
+        return camera_image
 
     ############### draw task ################
     def _draw_task(self):

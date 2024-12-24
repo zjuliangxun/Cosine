@@ -276,6 +276,13 @@ class ParkourAgent(amp_agent.AMPAgent):
         train_info["disc_rewards"] = batch_dict["disc_rewards"]
         return
 
+    def _log_image_info(self, epoch_num):
+        super()._log_image_info(epoch_num)
+        if epoch_num % self._log_image_interval == 0:
+            img = self.vec_env.env.get_image()
+            if img is not None:
+                self.writer.add_image("playground", img, global_step=epoch_num, walltime=None)
+
     def _amp_debug(self, info):
         with torch.no_grad():
             amp_obs = info["amp_obs"]

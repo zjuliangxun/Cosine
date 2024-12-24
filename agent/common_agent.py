@@ -158,6 +158,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 self.writer.add_scalar("performance/step_fps", curr_frames / scaled_play_time, frame)
                 self.writer.add_scalar("info/epochs", epoch_num, frame)
                 self._log_train_info(train_info, frame)
+                self._log_image_info(epoch_num)
 
                 self.algo_observer.after_print_stats(frame, epoch_num, total_time)
 
@@ -573,6 +574,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return advantages
 
     def _record_train_batch_info(self, batch_dict, train_info):
+        return
+
+    def _log_image_info(self, epoch_num):
         return
 
     def _log_train_info(self, train_info, frame):
