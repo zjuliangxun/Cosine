@@ -72,11 +72,11 @@ def compute_humanoid_reset(
 
 
 class TerminateByContact(TerminateByHeight):
-    def __init__(self, ctx, time_out_thresh: int = 120):
+    def __init__(self, ctx, time_out_thresh: int = 1):
         super().__init__(ctx)
         if TYPE_CHECKING:
             self.ctx: ParkourSingle
-        self.time_out_thresh = time_out_thresh  # int(4 / ctx.dt)
+        self.time_out_thresh = int(time_out_thresh / ctx.dt)
 
     def compute_reset(self):
         ctx = self.ctx

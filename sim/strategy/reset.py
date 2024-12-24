@@ -224,7 +224,7 @@ class CgRSIResetStrategy(AMPResetStrategy):
 
         if self._state_init == self.StateInit.Random or self._state_init == self.StateInit.Hybrid:
             # randomly sample the cg's node rather than the time.
-            rand_order = torch.rand_like(env_ids) * self.ctx.grid_cg_ord_num[cur_cg_ids]
+            rand_order = torch.rand(env_ids.shape[0], device=env_ids.device) * self.ctx.grid_cg_ord_num[cur_cg_ids]
             rand_order = torch.floor(rand_order).long()
             motion_times = ctx._motion_lib.sample_time_byorder(motion_ids, rand_order)
             self._reset_ref_node_order = rand_order

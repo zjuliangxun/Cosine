@@ -109,17 +109,14 @@ class ContactGraph(ContactGraphBase):
         return self._main_line
 
     def deform(self):
-        # first stretch the graph randomly alone x/y/z
         self._has_deformed = True
-        scale_factors = (
-            torch.rand(3, device=self.device) * 0.4 + 0.8
-        )  # Uniformly sample scale factors between 0.8 and 1.2
-        self.transform(scale=scale_factors.to(self.device))
         # secondly adjust some positions of cetain nodes, for better curriculum, we deform the height depend on skills
         if self.skill_type == "vault":
             pass  # TODO
         elif self.skill_type == "walk":
-            pass
+            # first stretch the graph randomly alone x/y/z; Uniformly sample scale factors between 0.8 and 1.2
+            low, up = 0.8, 1.5
+            self.transform(scale=torch.rand(3, device=self.device) * (up - low) + up)
 
     def transform(self, q=None, t=None, scale=None):
         self._has_deformed = True

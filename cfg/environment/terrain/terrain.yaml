@@ -45,6 +45,9 @@ add_idle_to_last: True
 enable_deform: false
 enable_scale: false
 
+walk_terrain:
+  num_rectangles: 20
+
 skill_combinations:
   - skills: [walk]
     fix_order: true

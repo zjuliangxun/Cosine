@@ -37,7 +37,7 @@ config:
   subscenes: &subscenes 0 # Number of PhysX subscenes to simulate in parallel
   slices: *subscenes # Number of client threads that process env slices, default to be subscenes
 
-  train_dir: ${paths.root_dir}/logs/
+  train_dir: ${paths.root_dir}/runs/
   full_experiment_name: ${config.task_name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
 
   mixed_precision: False
@@ -83,4 +83,9 @@ config:
   task_reward_w: 0.5
   disc_reward_w: 0.5
 
-  # log_image
+  log_image_interval: 100
+  
+  # graph(ugly)
+  normalize_graph_input: True
+  graph_input_mean_std: ${network.graph_obs_net.node_features_dim}
+  varlen_input_shape: ${eval:'2 * ${network.graph_obs_net.output_features_dim}'} # the dim of which catenated to the obs in network builder

@@ -122,7 +122,7 @@ class TerrainParkour(Terrain):
 
     def generate_walk_terrain(self, subterrain: FrameMap, cg: ContactGraph, difficulty):
         discrete_obstacles_height = 0.03 + difficulty * 0.15
-        num_rectangles = 20
+        num_rectangles = self.cfg.walk_terrain.num_rectangles
         rectangle_min_size = 0.5
         rectangle_max_size = 1.0
         terrain_utils.discrete_obstacles_terrain(

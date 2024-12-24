@@ -1,2 +1,2 @@
 _target_: sim.strategy.early_term.TerminateByContact
-time_out_thresh: 120
+time_out_thresh: 1 # 1 second of no progress

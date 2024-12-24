@@ -13,6 +13,8 @@ from data.contact_graph import ContactGraph
 from sim.humanoid_amp import HumanoidAMPTask
 from sim.terrian.base_terrian import TerrainParkour
 
+get_skeleton_id = lambda x: x[..., -2]
+
 
 # TODO legged robots有很多trick
 # TODO 定期刷新env系统，有些变量应该需要处理归入一个函数中去
@@ -70,7 +72,7 @@ class ParkourSingle(HumanoidAMPTask):
                 [
                     Data(
                         x=cg.get_feat_tensor(),
-                        edge_index=cg.edge_index_tensor,
+                        edge_index=cg.edge_index_tensor.to(torch.long),
                     )
                     for grid_cgs in graph_list
                     for cg in grid_cgs
@@ -360,6 +362,9 @@ class ParkourSingle(HumanoidAMPTask):
                         flag = unreach_goal
                     gymutil.draw_lines(flag, self.gym, self.viewer, self.envs[lookat_id], pose)
 
+            # x, y, z = self.terrain.get_env_origin(0)
+            # pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
+            # gymutil.draw_lines(current_goal, self.gym, self.viewer, self.envs[lookat_id], pose)
         super()._draw_task()
         return
 

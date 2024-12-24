@@ -10,6 +10,18 @@ class SkeletonID(Enum):
     LEG = 2
     HEAD = 3
     TORSO = 4
+    skeleton_name_map = {22: "R_Ankle", 18: "L_Ankle", 15: "R_Hand", 10: "L_Hand"}
+
+    @classmethod
+    def get_embed(cls, id):
+        if id == 22:
+            return 0, 1
+        if id == 18:
+            return 0, 0
+        if id == 15:
+            return 1, 1
+        if id == 10:
+            return 1, 0
 
 
 class DeviceMixin:

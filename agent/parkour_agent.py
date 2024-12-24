@@ -276,52 +276,6 @@ class ParkourAgent(amp_agent.AMPAgent):
         train_info["disc_rewards"] = batch_dict["disc_rewards"]
         return
 
-    def _log_train_info(self, train_info, frame):
-        super()._log_train_info(train_info, frame)
-
-        if self._disc_reward_w > 0:
-            self.writer.add_scalar(
-                "losses/disc_loss",
-                torch_ext.mean_list(train_info["disc_loss"]).item(),
-                frame,
-            )
-
-            self.writer.add_scalar(
-                "info/disc_agent_acc",
-                torch_ext.mean_list(train_info["disc_agent_acc"]).item(),
-                frame,
-            )
-            self.writer.add_scalar(
-                "info/disc_demo_acc",
-                torch_ext.mean_list(train_info["disc_demo_acc"]).item(),
-                frame,
-            )
-            self.writer.add_scalar(
-                "info/disc_agent_logit",
-                torch_ext.mean_list(train_info["disc_agent_logit"]).item(),
-                frame,
-            )
-            self.writer.add_scalar(
-                "info/disc_demo_logit",
-                torch_ext.mean_list(train_info["disc_demo_logit"]).item(),
-                frame,
-            )
-            self.writer.add_scalar(
-                "info/disc_grad_penalty",
-                torch_ext.mean_list(train_info["disc_grad_penalty"]).item(),
-                frame,
-            )
-            self.writer.add_scalar(
-                "info/disc_logit_loss",
-                torch_ext.mean_list(train_info["disc_logit_loss"]).item(),
-                frame,
-            )
-
-            disc_reward_std, disc_reward_mean = torch.std_mean(train_info["disc_rewards"])
-            self.writer.add_scalar("info/disc_reward_mean", disc_reward_mean.item(), frame)
-            self.writer.add_scalar("info/disc_reward_std", disc_reward_std.item(), frame)
-        return
-
     def _amp_debug(self, info):
         with torch.no_grad():
             amp_obs = info["amp_obs"]
