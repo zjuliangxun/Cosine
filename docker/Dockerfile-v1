@@ -1,0 +1,11 @@
+FROM isaacgym:v0
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+ libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*
+RUN pip install rl-games==1.1.4 -i https://mirrors.zju.edu.cn/pypi/web/simple
+
+
+COPY docker/nvidia_icd.json /usr/share/vulkan/icd.d/nvidia_icd.json
+COPY docker/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json

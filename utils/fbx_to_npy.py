@@ -36,18 +36,18 @@ from poselib.poselib.visualization.common import plot_skeleton_state, plot_skele
 # python utils/fbx_to_npy.py
 # root joint name
 root_joint = "Pelvis"  # "mixamorig:Hips"
-# source fbx file path
-motionname = "Standard Walk"
-# motionname = "Running"
-# motionname = "Idle"
-fbx_file = f"./motion_clips/dataset_processed/motion/{motionname}.fbx"
-out_path = f"./motion_clips/dataset_processed/npy_motion/{motionname}.json"
 
-# import fbx file - make sure to provide a valid joint name for root_joint
-motion = SkeletonMotion.from_fbx(fbx_file_path=fbx_file, root_joint=root_joint, fps=60)
+motionnames = ["Standard Walk", "Running", "Idle"]
 
-# save motion in npy format
-motion.to_file(out_path)
+for motionname in motionnames:
+    fbx_file = f"./motion_clips/dataset_processed/motion/{motionname}.fbx"
+    out_path = f"./motion_clips/dataset_processed/npy_motion/{motionname}.json"
 
-# visualize motion
-plot_skeleton_motion_interactive(motion)
+    # import fbx file - make sure to provide a valid joint name for root_joint
+    motion = SkeletonMotion.from_fbx(fbx_file_path=fbx_file, root_joint=root_joint, fps=60)
+
+    # save motion in npy format
+    motion.to_file(out_path)
+
+    # visualize motion
+    plot_skeleton_motion_interactive(motion)

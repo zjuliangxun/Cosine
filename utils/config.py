@@ -144,6 +144,7 @@ def parse_config(cfg):
     if cfg.config.multi_gpu:
         import horovod.torch as hvd
 
+        hvd.init()
         rank = hvd.rank()
         print("Horovod rank: ", rank)
     cfg["seed"] = cfg["seed"] + rank

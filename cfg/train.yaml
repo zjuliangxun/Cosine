@@ -37,7 +37,7 @@ config:
   subscenes: &subscenes 0 # Number of PhysX subscenes to simulate in parallel
   slices: *subscenes # Number of client threads that process env slices, default to be subscenes
 
-  train_dir: ${paths.root_dir}/runs/
+  train_dir: ${paths.log_dir}
   full_experiment_name: ${config.task_name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
 
   mixed_precision: False
@@ -67,8 +67,8 @@ config:
   clip_value: False
   seq_len: 4
   bounds_loss_coef: 10
-  amp_obs_demo_buffer_size: 200
-  amp_replay_buffer_size: 200
+  amp_obs_demo_buffer_size: 200000
+  amp_replay_buffer_size: 200000
   amp_replay_keep_prob: 0.01
   amp_batch_size: 512
   amp_minibatch_size: 4096

@@ -3,7 +3,7 @@
 SHELL_PATH="$( cd "$( dirname "$0"  )" && pwd  )"
 DOCKER_HOME="/home/$USER"
 
-IMG="isaacgym:v0"  
+IMG="isaacgym:4090-v1"  
 
 LOCAL_DIR=$(pwd)
 if [ -z $DOCKER_NAME ];then
@@ -13,9 +13,8 @@ fi
 USER_ID=$(id -u)
 GRP=$(id -g -n)
 GRP_ID=$(id -g)
-
 local_volumes() {
-  volumes="-v $LOCAL_DIR:$LOCAL_DIR \
+  volumes="-v ${HOME}:${DOCKER_HOME} \
            -v $HOME/.ssh:${DOCKER_HOME}/.ssh \
            -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
 		   -v /media:/media \
