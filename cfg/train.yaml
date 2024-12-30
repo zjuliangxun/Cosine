@@ -20,7 +20,7 @@ train: True
 
 # resume
 load_checkpoint: False
-checkpoint: None # agent.restore(self.load_path) # [ ]
+load_path: "" # todo resume training lr/optimizer# [ ]
 
 config:
   task_name: &task_name Humanoid # task name, used in output folder
@@ -39,7 +39,7 @@ config:
 
   train_dir: ${paths.log_dir}
   full_experiment_name: ${config.task_name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
-
+  save_intermediate: true
   mixed_precision: False
   normalize_input: True
   normalize_value: True
@@ -85,7 +85,3 @@ config:
 
   log_image_interval: 100
   
-  # graph(ugly)
-  normalize_graph_input: True
-  graph_input_mean_std: ${network.graph_obs_net.node_features_dim}
-  varlen_input_shape: ${eval:'2 * ${network.graph_obs_net.output_features_dim}'} # the dim of which catenated to the obs in network builder

@@ -21,7 +21,8 @@ RUN apt-get update \
  tmux \
  sudo \
  zsh \
- && rm -rf /var/lib/apt/lists/*
+ gpustat \
+&& rm -rf /var/lib/apt/lists/*
 
 RUN pip install torch_geometric pillow imageio ninja scipy  gym \
     hydra-core omegaconf wandb pyrootutils termcolor ipdb pycollada pyglet\

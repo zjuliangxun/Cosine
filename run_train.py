@@ -16,8 +16,7 @@ from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import AlgoObserver
 from rl_games.torch_runner import Runner
 
-from agent import amp_agent, parkour_agent
-from agent import amp_players
+from agent import amp_agent, parkour_agent, amp_player, parkour_player
 from model import amp_models
 from model import amp_network_builder, parkour_network_builder
 
@@ -178,14 +177,15 @@ vecenv.register("RLGPU", lambda config_name, num_actors, **kwargs: RLGPUEnv(conf
 def build_alg_runner(algo_observer):
     runner = Runner(algo_observer)
     runner.algo_factory.register_builder("amp", lambda **kwargs: amp_agent.AMPAgent(**kwargs))
-    runner.player_factory.register_builder("amp", lambda **kwargs: amp_players.AMPPlayerContinuous(**kwargs))
+    runner.player_factory.register_builder("amp", lambda **kwargs: amp_player.AMPPlayerContinuous(**kwargs))
+
     runner.model_builder.model_factory.register_builder(
         "amp", lambda network, **kwargs: amp_models.ModelAMPContinuous(network)
     )
     runner.model_builder.network_factory.register_builder("amp", lambda **kwargs: amp_network_builder.AMPBuilder())
 
     runner.algo_factory.register_builder("parkour", lambda **kwargs: parkour_agent.ParkourAgent(**kwargs))
-    # runner.player_factory.register_builder("parkour", lambda **kwargs: parkour_players.？(**kwargs))
+    runner.player_factory.register_builder("parkour", lambda **kwargs: parkour_player.ParkourPlayerContinuous(**kwargs))
     runner.model_builder.model_factory.register_builder(
         "parkour", lambda network, **kwargs: amp_models.ModelAMPContinuous(network)
     )

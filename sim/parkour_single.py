@@ -29,7 +29,7 @@ class ParkourSingle(HumanoidAMPTask):
         assert self._dof_offsets[-1] == self.num_dof
 
         # logger camera for tensorboard
-        if not self.enable_camera_sensors:
+        if self.enable_camera_sensors:
             camera_props = gymapi.CameraProperties()
             camera_props.enable_tensors = True  # must be true if headless rendering!
             camera_props.width = 720
@@ -341,11 +341,11 @@ class ParkourSingle(HumanoidAMPTask):
         return env_cur_cg_id, env_next_cg_id
 
     def get_image(self, env_id=0):
+        if not self.enable_camera_sensors:
+            return None
         # self.gym.get_camera_image(self.sim, self.envs[env_id], self.logger_cam_handle, gymapi.IMAGE_COLOR)
         self.gym.render_all_camera_sensors(self.sim)
         self.gym.fetch_results(self.sim, True)
-        if not self.enable_camera_sensors:
-            return None
         camera_tensor = self.gym.get_camera_image_gpu_tensor(
             self.sim, self.envs[0], self.logger_cam_handle, gymapi.IMAGE_COLOR
         )
