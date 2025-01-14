@@ -2,8 +2,13 @@
 
 SHELL_PATH="$( cd "$( dirname "$0"  )" && pwd  )"
 DOCKER_HOME="/home/$USER"
+XAUTHORITY_PATH=${DOCKER_HOME}/.Xauthority
+IMG="isaacgym:v0"  
 
-IMG="isaacgym:4090-v1"  
+gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1)
+case "$gpu_name" in (*A100*|*A30*|*A40*|*A6000*|*RTX\ 40*|*Quadro\ RTX\ A*)
+    IMG="isaacgym:4090-v1"  
+esac
 
 LOCAL_DIR=$(pwd)
 if [ -z $DOCKER_NAME ];then
@@ -50,7 +55,7 @@ main(){
         docker rm -f ${DOCKER_NAME} 1>/dev/null
     fi
 
-    local display="${DISPLAY:-:0}"
+    local display="${DISPLAY}" # "${DISPLAY:-:0}"
 
     DOCKER_CMD="docker"
     GPU_CONFIG="--gpus all --runtime=nvidia"
@@ -60,6 +65,7 @@ main(){
     eval ${DOCKER_CMD} run -it \
         -d \
         $GPU_CONFIG \
+	    --network=host \
         --name ${DOCKER_NAME}\
         -e DISPLAY=$display \
         -e DOCKER_USER=$USER \
@@ -69,6 +75,7 @@ main(){
         -e DOCKER_GRP_ID=$GRP_ID \
         -e DOCKER_HOME=$DOCKER_HOME \
         -e SSH_AUTH_SOCK=/tmp/.ssh-agent-$USER/agent.sock \
+	    -e XAUTHORITY=${XAUTHORITY_PATH} \
         $(local_volumes) \
         -p $RANDOM:22 \
         -p $RANDOM:8501 \

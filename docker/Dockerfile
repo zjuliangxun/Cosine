@@ -34,7 +34,6 @@ COPY docker/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 # isaacgym download
 WORKDIR /
 RUN wget https://developer.nvidia.com/isaac-gym-preview-4 \
-    && mkdir isaacgym && cd isaacgym \
     && tar -zxf isaac-gym-preview-4 \
     && rm -rf isaac-gym-preview-4 \
     && cd ./isaacgym/python && pip install -e .
